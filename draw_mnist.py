@@ -3,20 +3,27 @@ import numpy as np
 from ops import *
 from utils import *
 import input_data
+import argparse
+import os
 # from scipy.misc import imsave as ims
 
 
 class Draw():
-    def __init__(self):
-        self.mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
+    def __init__(self, args):
+        self.mnist = input_data.read_data_sets("../dataset/mnist/", one_hot=True)
         self.n_samples = self.mnist.train.num_examples
 
         self.img_size = 28
+        self.attention = args.attention
         self.attention_n = 5
+        self.read = self.read_attention if self.attention else self.read_basic
+        self.write = self.write_attention if self.attention else self.write_basic
+
         self.n_hidden = 256
         self.n_z = 10
         self.sequence_length = 10
         self.batch_size = 64
+        self.nb_steps = args.nb_steps
         self.share_parameters = False
 
         self.images = tf.placeholder(tf.float32, [None, 784])
@@ -37,22 +44,15 @@ class Draw():
             c_prev = tf.zeros((self.batch_size, self.img_size**2)) if t == 0 else self.cs[t-1]
             x_hat = x - tf.sigmoid(c_prev)
             # read the image
-            r = self.read_basic(x,x_hat,h_dec_prev)
-            print(r.get_shape())
-            # r = self.read_attention(x,x_hat,h_dec_prev)
+            r = self.read(x,x_hat,h_dec_prev)
             # encode it to guass distrib
             self.mu[t], self.logsigma[t], self.sigma[t], enc_state = self.encode(enc_state, tf.concat([r, h_dec_prev], 1))
             # sample from the distrib to get z
             z = self.sampleQ(self.mu[t],self.sigma[t])
-            print(z.get_shape())
             # retrieve the hidden layer of RNN
             h_dec, dec_state = self.decode_layer(dec_state, z)
-
-            print(h_dec.get_shape())
-
             # map from hidden layer -> image portion, and then write it.
-            self.cs[t] = c_prev + self.write_basic(h_dec)
-            # self.cs[t] = c_prev + self.write_attention(h_dec)
+            self.cs[t] = c_prev + self.write(h_dec)
             h_dec_prev = h_dec
             self.share_parameters = True # from now on, share variables
 
@@ -77,22 +77,26 @@ class Draw():
         self.train_op = optimizer.apply_gradients(grads)
 
         self.sess = tf.Session()
-        self.sess.run(tf.initialize_all_variables())
+        self.sess.run(tf.global_variables_initializer())
 
     def train(self):
-        for i in range(15000):
+        print('Started training...')
+        path="logs/mnist/results/"
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        for i in range(self.nb_steps):
             xtrain, _ = self.mnist.train.next_batch(self.batch_size)
             cs, gen_loss, lat_loss, _ = self.sess.run([self.cs, self.generation_loss, self.latent_loss, self.train_op], feed_dict={self.images: xtrain})
             print("iter %d genloss %f latloss %f" % (i, gen_loss, lat_loss))
-            if i % 500 == 0:
+            if i % 250 == 0:
 
                 cs = 1.0/(1.0+np.exp(-np.array(cs))) # x_recons=sigmoid(canvas)
 
                 for cs_iter in range(10):
                     results = cs[cs_iter]
                     results_square = np.reshape(results, [-1, 28, 28])
-                    print(results_square.shape)
-                    ims("results/"+str(i)+"-step-"+str(cs_iter)+".jpg",merge(results_square,[8,8]))
+                    ims(path+str(i)+"-step-"+str(cs_iter)+".jpg",merge(results_square,[8,8]))
 
 
     # given a hidden decoder layer:
@@ -101,7 +105,7 @@ class Draw():
         with tf.variable_scope(scope, reuse=self.share_parameters):
             parameters = dense(h_dec, self.n_hidden, 5)
         # gx_, gy_: center of 2d gaussian on a scale of -1 to 1
-        gx_, gy_, log_sigma2, log_delta, log_gamma = tf.split(1,5,parameters)
+        gx_, gy_, log_sigma2, log_delta, log_gamma = tf.split(parameters,5,1)
 
         # move gx/gy to be a scale of -imgsize to +imgsize
         gx = (self.img_size+1)/2 * (gx_ + 1)
@@ -152,13 +156,13 @@ class Draw():
             # allfilters = [attn, vert] * [imgsize,imgsize] * [horiz, attn]
             # we have batches, so the full batch_matmul equation looks like:
             # [1, 1, vert] * [batchsize,imgsize,imgsize] * [1, horiz, 1]
-            glimpse = tf.batch_matmul(Fy, tf.batch_matmul(img, Fxt))
+            glimpse = tf.matmul(Fy, tf.matmul(img, Fxt))
             glimpse = tf.reshape(glimpse, [-1, self.attention_n**2])
             # finally scale this glimpse w/ the gamma parameter
             return glimpse * tf.reshape(gamma, [-1, 1])
         x = filter_img(x, Fx, Fy, gamma)
         x_hat = filter_img(x_hat, Fx, Fy, gamma)
-        return tf.concat(1, [x, x_hat])
+        return tf.concat([x, x_hat], 1)
 
     # encode an attention patch
     def encode(self, prev_state, image):
@@ -198,11 +202,27 @@ class Draw():
         Fx, Fy, gamma = self.attn_window("write", hidden_layer)
         Fyt = tf.transpose(Fy, perm=[0,2,1])
         # [vert, attn_n] * [attn_n, attn_n] * [attn_n, horiz]
-        wr = tf.batch_matmul(Fyt, tf.batch_matmul(w, Fx))
+        wr = tf.matmul(Fyt, tf.matmul(w, Fx))
         wr = tf.reshape(wr, [self.batch_size, self.img_size**2])
         return wr * tf.reshape(1.0/gamma, [-1, 1])
 
 
+def bool_arg(string):
+    value = string.lower()
+    if value == 'true': return True
+    elif value == 'false': return False
+    else: raise argparse.ArgumentTypeError("Expected True or False, but got {}".format(string))
 
-model = Draw()
-model.train()
+
+def get_arg_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-a', '--attention', default=True, type=bool_arg, help="Read and write with attention or not", dest="attention")
+    parser.add_argument('-n', '--nb_steps', default=15000, type=int, help="Number of steps to train the agent", dest="nb_steps")
+    return parser
+
+
+if __name__ == '__main__':
+    args = get_arg_parser().parse_args()
+
+    model = Draw(args)
+    model.train()

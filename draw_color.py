@@ -4,20 +4,27 @@ from ops import *
 from utils import *
 from glob import glob
 import os
+import argparse
 
 class Draw():
-    def __init__(self):
+    def __init__(self, args):
 
         self.img_size = 64
         self.num_colors = 3
 
+        self.attention = args.attention
         self.attention_n = 5
+        self.read = self.read_attention if self.attention else self.read_basic
+        self.write = self.write_attention if self.attention else self.write_basic
+
         self.n_hidden = 256
         self.n_z = 10
         self.sequence_length = 10
         self.batch_size = 64
+        self.nb_epochs = args.nb_epochs
         self.share_parameters = False
 
+        self.dataset = args.dataset
         self.images = tf.placeholder(tf.float32, [None, self.img_size, self.img_size, self.num_colors])
 
         self.e = tf.random_normal((self.batch_size, self.n_z), mean=0, stddev=1) # Qsampler noise
@@ -39,8 +46,7 @@ class Draw():
             c_prev = tf.zeros((self.batch_size, self.img_size * self.img_size * self.num_colors)) if t == 0 else self.cs[t-1]
             x_hat = x - tf.sigmoid(c_prev)
             # read the image
-            # r = self.read_basic(x,x_hat,h_dec_prev)
-            r = self.read_attention(x,x_hat,h_dec_prev)
+            r = self.read(x,x_hat,h_dec_prev)
             # encode it to gauss distrib
             self.mu[t], self.logsigma[t], self.sigma[t], enc_state = self.encode(enc_state, tf.concat([r, h_dec_prev], 1))
             # sample from the distrib to get z
@@ -48,15 +54,13 @@ class Draw():
             # retrieve the hidden layer of RNN
             h_dec, dec_state = self.decode_layer(dec_state, z)
             # map from hidden layer -> image portion, and then write it.
-            # self.cs[t] = c_prev + self.write_basic(h_dec)
-            self.cs[t] = c_prev + self.write_attention(h_dec)
+            self.cs[t] = c_prev + self.write(h_dec)
             h_dec_prev = h_dec
             self.share_parameters = True # from now on, share variables
 
         # the final timestep
         self.generated_images = tf.nn.sigmoid(self.cs[-1])
 
-        # self.generation_loss = tf.reduce_mean(-tf.reduce_sum(self.images * tf.log(1e-10 + self.generated_images) + (1-self.images) * tf.log(1e-10 + 1 - self.generated_images),1))
         self.generation_loss = tf.nn.l2_loss(x - self.generated_images)
 
         kl_terms = [0]*self.sequence_length
@@ -209,16 +213,20 @@ class Draw():
 
 
     def train(self):
-        data = glob("../dataset/CelebA/*.jpg")
+        print('Started training...')
+        data = glob("../dataset/"+self.dataset+"/*.jpg")
         base = np.array([get_image(sample_file, 108, is_crop=True) for sample_file in data[0:64]])
         base += 1
         base /= 2
 
-        ims("results/base.jpg",merge_color(base,[8,8]))
+        path = "logs/"+self.dataset+"/results/"
+        if not os.path.exists(path):
+            os.makedirs(path)
+        ims(path+"base.jpg",merge_color(base,[8,8]))
 
         saver = tf.train.Saver(max_to_keep=2)
 
-        for e in range(10):
+        for e in range(self.nb_epochs):
             for i in range(int((len(data) / self.batch_size)) - 2):
 
                 batch_files = data[i*self.batch_size:(i+1)*self.batch_size]
@@ -233,43 +241,39 @@ class Draw():
                 # print attn_params[1].shape
                 # print attn_params[2].shape
                 if i % 800 == 0:
-
-                    saver.save(self.sess, os.getcwd() + "/training/train", global_step=e*10000 + i)
+                    saver.save(self.sess, os.getcwd()+"/logs/"+self.dataset+"/checkpoints/chkpt", global_step=e*10000 + i)
 
                     cs = 1.0/(1.0+np.exp(-np.array(cs))) # x_recons=sigmoid(canvas)
 
                     for cs_iter in range(10):
                         results = cs[cs_iter]
                         results_square = np.reshape(results, [-1, self.img_size, self.img_size, self.num_colors])
-                        print(results_square.shape)
-                        ims("results/"+str(e)+"-"+str(i)+"-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
+                        ims(path+str(e)+"-"+str(i)+"-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
 
 
     def view(self):
-        data = glob(os.path.join("../Datasets/celebA", "*.jpg"))
+        print('Started testing...')
+        data = glob("../dataset/"+self.dataset+"/*.jpg")
         base = np.array([get_image(sample_file, 108, is_crop=True) for sample_file in data[0:64]])
         base += 1
         base /= 2
 
-        ims("results/base.jpg",merge_color(base,[8,8]))
+        path = "logs/"+self.dataset+"/results/"
+        if not os.path.exists(path):
+            os.makedirs(path)
+        ims(path+"base.jpg",merge_color(base,[8,8]))
 
         saver = tf.train.Saver(max_to_keep=2)
-        saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/training/"))
+        saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/logs/"+self.dataset+"/checkpoints/"))
 
         cs, attn_params, gen_loss, lat_loss = self.sess.run([self.cs, self.attn_params, self.generation_loss, self.latent_loss], feed_dict={self.images: base})
         print("genloss %f latloss %f" % (gen_loss, lat_loss))
 
         cs = 1.0/(1.0+np.exp(-np.array(cs))) # x_recons=sigmoid(canvas)
 
-        print(np.shape(cs))
-        print(np.shape(attn_params))
-            # cs[0][cent]
-
         for cs_iter in range(10):
             results = cs[cs_iter]
             results_square = np.reshape(results, [-1, self.img_size, self.img_size, self.num_colors])
-
-            print(np.shape(results_square))
 
             for i in range(64):
                 center_x = int(attn_params[cs_iter][0][i][0])
@@ -278,32 +282,47 @@ class Draw():
 
                 size = 2;
 
-                # for x in range(3):
-                #     for y in range(3):
-                #         nx = x - 1;
-                #         ny = y - 1;
-                #
-                #         xpos = center_x + nx*distance
-                #         ypos = center_y + ny*distance
-                #
-                #         xpos2 = min(max(0, xpos + size), 63)
-                #         ypos2 = min(max(0, ypos + size), 63)
-                #
-                #         xpos = min(max(0, xpos), 63)
-                #         ypos = min(max(0, ypos), 63)
-                #
-                #         results_square[i,xpos:xpos2,ypos:ypos2,0] = 0;
-                #         results_square[i,xpos:xpos2,ypos:ypos2,1] = 1;
-                #         results_square[i,xpos:xpos2,ypos:ypos2,2] = 0;
-                # print "%f , %f" % (center_x, center_y)
+                for x in range(3):
+                    for y in range(3):
+                        nx = x - 1;
+                        ny = y - 1;
 
-            print(results_square)
+                        xpos = center_x + nx*distance
+                        ypos = center_y + ny*distance
 
-            ims("results/view-clean-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
+                        xpos2 = min(max(0, xpos + size), 63)
+                        ypos2 = min(max(0, ypos + size), 63)
+
+                        xpos = min(max(0, xpos), 63)
+                        ypos = min(max(0, ypos), 63)
+
+                        results_square[i,xpos:xpos2,ypos:ypos2,0] = 0;
+                        results_square[i,xpos:xpos2,ypos:ypos2,1] = 1;
+                        results_square[i,xpos:xpos2,ypos:ypos2,2] = 0;
+
+            ims(path+"/view-clean-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
+
+def bool_arg(string):
+    value = string.lower()
+    if value == 'true': return True
+    elif value == 'false': return False
+    else: raise argparse.ArgumentTypeError("Expected True or False, but got {}".format(string))
 
 
+def get_arg_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--dataset', default='CelebA', type=str, help="Which dataset to use", dest="dataset")
+    parser.add_argument('-a', '--attention', default=True, type=bool_arg, help="Read and write with attention or not", dest="attention")
+    parser.add_argument('-v', '--visualize', default=False, type=bool_arg, help="When using attention, whether to visualize or not the attention box", dest="visualize")
+    parser.add_argument('-n', '--nb_epochs', default=10, type=int, help="Number of epochs to train the agent", dest="nb_epochs")
+    return parser
 
 
-model = Draw()
-model.train()
-#model.view()
+if __name__ == '__main__':
+    args = get_arg_parser().parse_args()
+
+    model = Draw(args)
+    model.train()
+
+    if args.visualize :
+        model.view()
