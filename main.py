@@ -38,17 +38,17 @@ class Draw():
             x_hat = x - tf.sigmoid(c_prev)
             # read the image
             r = self.read_basic(x,x_hat,h_dec_prev)
-            print r.get_shape()
+            print(r.get_shape())
             # r = self.read_attention(x,x_hat,h_dec_prev)
             # encode it to guass distrib
-            self.mu[t], self.logsigma[t], self.sigma[t], enc_state = self.encode(enc_state, tf.concat(1, [r, h_dec_prev]))
+            self.mu[t], self.logsigma[t], self.sigma[t], enc_state = self.encode(enc_state, tf.concat([r, h_dec_prev], 1))
             # sample from the distrib to get z
             z = self.sampleQ(self.mu[t],self.sigma[t])
-            print z.get_shape()
+            print(z.get_shape())
             # retrieve the hidden layer of RNN
             h_dec, dec_state = self.decode_layer(dec_state, z)
 
-            print h_dec.get_shape()
+            print(h_dec.get_shape())
 
             # map from hidden layer -> image portion, and then write it.
             self.cs[t] = c_prev + self.write_basic(h_dec)
@@ -62,7 +62,7 @@ class Draw():
         self.generation_loss = tf.reduce_mean(-tf.reduce_sum(self.images * tf.log(1e-10 + self.generated_images) + (1-self.images) * tf.log(1e-10 + 1 - self.generated_images),1))
 
         kl_terms = [0]*self.sequence_length
-        for t in xrange(self.sequence_length):
+        for t in range(self.sequence_length):
             mu2 = tf.square(self.mu[t])
             sigma2 = tf.square(self.sigma[t])
             logsigma = self.logsigma[t]
@@ -80,18 +80,18 @@ class Draw():
         self.sess.run(tf.initialize_all_variables())
 
     def train(self):
-        for i in xrange(15000):
+        for i in range(15000):
             xtrain, _ = self.mnist.train.next_batch(self.batch_size)
             cs, gen_loss, lat_loss, _ = self.sess.run([self.cs, self.generation_loss, self.latent_loss, self.train_op], feed_dict={self.images: xtrain})
-            print "iter %d genloss %f latloss %f" % (i, gen_loss, lat_loss)
+            print("iter %d genloss %f latloss %f" % (i, gen_loss, lat_loss))
             if i % 500 == 0:
 
                 cs = 1.0/(1.0+np.exp(-np.array(cs))) # x_recons=sigmoid(canvas)
 
-                for cs_iter in xrange(10):
+                for cs_iter in range(10):
                     results = cs[cs_iter]
                     results_square = np.reshape(results, [-1, 28, 28])
-                    print results_square.shape
+                    print(results_square.shape)
                     ims("results/"+str(i)+"-step-"+str(cs_iter)+".jpg",merge(results_square,[8,8]))
 
 
@@ -138,7 +138,7 @@ class Draw():
 
     # the read() operation without attention
     def read_basic(self, x, x_hat, h_dec_prev):
-        return tf.concat(1,[x,x_hat])
+        return tf.concat([x,x_hat], 1)
 
     def read_attention(self, x, x_hat, h_dec_prev):
         Fx, Fy, gamma = self.attn_window("read", h_dec_prev)
