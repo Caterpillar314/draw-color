@@ -35,7 +35,7 @@ def merge_color(images, size):
 
     for idx, image in enumerate(images):
         i = idx % size[1]
-        j = idx / size[1]
+        j = int(idx / size[1])
         img[j*h:j*h+h, i*w:i*w+w, :] = image
 
     return img

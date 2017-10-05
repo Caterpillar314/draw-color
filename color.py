@@ -42,7 +42,7 @@ class Draw():
             # r = self.read_basic(x,x_hat,h_dec_prev)
             r = self.read_attention(x,x_hat,h_dec_prev)
             # encode it to gauss distrib
-            self.mu[t], self.logsigma[t], self.sigma[t], enc_state = self.encode(enc_state, tf.concat(1, [r, h_dec_prev]))
+            self.mu[t], self.logsigma[t], self.sigma[t], enc_state = self.encode(enc_state, tf.concat([r, h_dec_prev], 1))
             # sample from the distrib to get z
             z = self.sampleQ(self.mu[t],self.sigma[t])
             # retrieve the hidden layer of RNN
@@ -60,7 +60,7 @@ class Draw():
         self.generation_loss = tf.nn.l2_loss(x - self.generated_images)
 
         kl_terms = [0]*self.sequence_length
-        for t in xrange(self.sequence_length):
+        for t in range(self.sequence_length):
             mu2 = tf.square(self.mu[t])
             sigma2 = tf.square(self.sigma[t])
             logsigma = self.logsigma[t]
@@ -75,7 +75,7 @@ class Draw():
         self.train_op = optimizer.apply_gradients(grads)
 
         self.sess = tf.Session()
-        self.sess.run(tf.initialize_all_variables())
+        self.sess.run(tf.global_variables_initializer())
 
     # given a hidden decoder layer:
     # locate where to put attention filters
@@ -83,7 +83,7 @@ class Draw():
         with tf.variable_scope(scope, reuse=self.share_parameters):
             parameters = dense(h_dec, self.n_hidden, 5)
         # gx_, gy_: center of 2d gaussian on a scale of -1 to 1
-        gx_, gy_, log_sigma2, log_delta, log_gamma = tf.split(1,5,parameters)
+        gx_, gy_, log_sigma2, log_delta, log_gamma = tf.split(parameters,5,1)
 
         # move gx/gy to be a scale of -imgsize to +imgsize
         gx = (self.img_size+1)/2 * (gx_ + 1)
@@ -123,7 +123,7 @@ class Draw():
 
     # the read() operation without attention
     def read_basic(self, x, x_hat, h_dec_prev):
-        return tf.concat(1,[x,x_hat])
+        return tf.concat([x,x_hat], 1)
 
     def read_attention(self, x, x_hat, h_dec_prev):
         Fx, Fy, gamma = self.attn_window("read", h_dec_prev)
@@ -137,13 +137,13 @@ class Draw():
 
             # color1, color2, color3, color1, color2, color3, etc.
             batch_colors_array = tf.reshape(img_t, [self.num_colors * self.batch_size, self.img_size, self.img_size])
-            Fx_array = tf.concat(0, [Fx, Fx, Fx])
-            Fy_array = tf.concat(0, [Fy, Fy, Fy])
+            Fx_array = tf.concat([Fx, Fx, Fx], 0)
+            Fy_array = tf.concat([Fy, Fy, Fy], 0)
 
             Fxt = tf.transpose(Fx_array, perm=[0,2,1])
 
             # Apply the gaussian patches:
-            glimpse = tf.batch_matmul(Fy_array, tf.batch_matmul(batch_colors_array, Fxt))
+            glimpse = tf.matmul(Fy_array, tf.matmul(batch_colors_array, Fxt))
             glimpse = tf.reshape(glimpse, [self.num_colors, self.batch_size, self.attention_n, self.attention_n])
             glimpse = tf.transpose(glimpse, [1,2,3,0])
             glimpse = tf.reshape(glimpse, [self.batch_size, self.attention_n*self.attention_n*self.num_colors])
@@ -151,7 +151,7 @@ class Draw():
             return glimpse * tf.reshape(gamma, [-1, 1])
         x = filter_img(x, Fx, Fy, gamma)
         x_hat = filter_img(x_hat, Fx, Fy, gamma)
-        return tf.concat(1, [x, x_hat])
+        return tf.concat([x, x_hat],1)
 
     # encode an attention patch
     def encode(self, prev_state, image):
@@ -195,12 +195,12 @@ class Draw():
 
         # color1, color2, color3, color1, color2, color3, etc.
         w_array = tf.reshape(w_t, [self.num_colors * self.batch_size, self.attention_n, self.attention_n])
-        Fx_array = tf.concat(0, [Fx, Fx, Fx])
-        Fy_array = tf.concat(0, [Fy, Fy, Fy])
+        Fx_array = tf.concat([Fx, Fx, Fx], 0)
+        Fy_array = tf.concat([Fy, Fy, Fy], 0)
 
         Fyt = tf.transpose(Fy_array, perm=[0,2,1])
         # [vert, attn_n] * [attn_n, attn_n] * [attn_n, horiz]
-        wr = tf.batch_matmul(Fyt, tf.batch_matmul(w_array, Fx_array))
+        wr = tf.matmul(Fyt, tf.matmul(w_array, Fx_array))
         sep_colors = tf.reshape(wr, [self.batch_size, self.num_colors, self.img_size**2])
         wr = tf.reshape(wr, [self.num_colors, self.batch_size, self.img_size, self.img_size])
         wr = tf.transpose(wr, [1,2,3,0])
@@ -209,7 +209,7 @@ class Draw():
 
 
     def train(self):
-        data = glob(os.path.join("../Datasets/celebA", "*.jpg"))
+        data = glob("../dataset/CelebA/*.jpg")
         base = np.array([get_image(sample_file, 108, is_crop=True) for sample_file in data[0:64]])
         base += 1
         base /= 2
@@ -218,8 +218,8 @@ class Draw():
 
         saver = tf.train.Saver(max_to_keep=2)
 
-        for e in xrange(10):
-            for i in range((len(data) / self.batch_size) - 2):
+        for e in range(10):
+            for i in range(int((len(data) / self.batch_size)) - 2):
 
                 batch_files = data[i*self.batch_size:(i+1)*self.batch_size]
                 batch = [get_image(batch_file, 108, is_crop=True) for batch_file in batch_files]
@@ -228,7 +228,7 @@ class Draw():
                 batch_images /= 2
 
                 cs, attn_params, gen_loss, lat_loss, _ = self.sess.run([self.cs, self.attn_params, self.generation_loss, self.latent_loss, self.train_op], feed_dict={self.images: batch_images})
-                print "epoch %d iter %d genloss %f latloss %f" % (e, i, gen_loss, lat_loss)
+                print("epoch %d iter %d genloss %f latloss %f" % (e, i, gen_loss, lat_loss))
                 # print attn_params[0].shape
                 # print attn_params[1].shape
                 # print attn_params[2].shape
@@ -238,10 +238,10 @@ class Draw():
 
                     cs = 1.0/(1.0+np.exp(-np.array(cs))) # x_recons=sigmoid(canvas)
 
-                    for cs_iter in xrange(10):
+                    for cs_iter in range(10):
                         results = cs[cs_iter]
                         results_square = np.reshape(results, [-1, self.img_size, self.img_size, self.num_colors])
-                        print results_square.shape
+                        print(results_square.shape)
                         ims("results/"+str(e)+"-"+str(i)+"-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
 
 
@@ -257,29 +257,29 @@ class Draw():
         saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/training/"))
 
         cs, attn_params, gen_loss, lat_loss = self.sess.run([self.cs, self.attn_params, self.generation_loss, self.latent_loss], feed_dict={self.images: base})
-        print "genloss %f latloss %f" % (gen_loss, lat_loss)
+        print("genloss %f latloss %f" % (gen_loss, lat_loss))
 
         cs = 1.0/(1.0+np.exp(-np.array(cs))) # x_recons=sigmoid(canvas)
 
-        print np.shape(cs)
-        print np.shape(attn_params)
+        print(np.shape(cs))
+        print(np.shape(attn_params))
             # cs[0][cent]
 
-        for cs_iter in xrange(10):
+        for cs_iter in range(10):
             results = cs[cs_iter]
             results_square = np.reshape(results, [-1, self.img_size, self.img_size, self.num_colors])
 
-            print np.shape(results_square)
+            print(np.shape(results_square))
 
-            for i in xrange(64):
+            for i in range(64):
                 center_x = int(attn_params[cs_iter][0][i][0])
                 center_y = int(attn_params[cs_iter][1][i][0])
                 distance = int(attn_params[cs_iter][2][i][0])
 
                 size = 2;
 
-                # for x in xrange(3):
-                #     for y in xrange(3):
+                # for x in range(3):
+                #     for y in range(3):
                 #         nx = x - 1;
                 #         ny = y - 1;
                 #
@@ -297,7 +297,7 @@ class Draw():
                 #         results_square[i,xpos:xpos2,ypos:ypos2,2] = 0;
                 # print "%f , %f" % (center_x, center_y)
 
-            print results_square
+            print(results_square)
 
             ims("results/view-clean-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
 
@@ -305,5 +305,5 @@ class Draw():
 
 
 model = Draw()
-# model.train()
-model.view()
+model.train()
+#model.view()
