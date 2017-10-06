@@ -10,6 +10,7 @@ class Draw():
     def __init__(self, args):
 
         self.img_size = 64
+        self.img_initial_size = 128
         self.num_colors = 3
 
         self.attention = args.attention
@@ -214,8 +215,8 @@ class Draw():
 
     def train(self):
         print('Started training...')
-        data = glob("../dataset/"+self.dataset+"/*.jpg")
-        base = np.array([get_image(sample_file, 108, is_crop=True) for sample_file in data[0:64]])
+        data = glob("../dataset/"+self.dataset+"/*")
+        base = np.array([get_image(sample_file, self.img_initial_size, is_crop=True) for sample_file in data[0:64]])
         base += 1
         base /= 2
 
@@ -230,7 +231,7 @@ class Draw():
             for i in range(int((len(data) / self.batch_size)) - 2):
 
                 batch_files = data[i*self.batch_size:(i+1)*self.batch_size]
-                batch = [get_image(batch_file, 108, is_crop=True) for batch_file in batch_files]
+                batch = [get_image(batch_file, self.img_initial_size, is_crop=True) for batch_file in batch_files]
                 batch_images = np.array(batch).astype(np.float32)
                 batch_images += 1
                 batch_images /= 2
@@ -253,8 +254,8 @@ class Draw():
 
     def view(self):
         print('Started testing...')
-        data = glob("../dataset/"+self.dataset+"/*.jpg")
-        base = np.array([get_image(sample_file, 108, is_crop=True) for sample_file in data[0:64]])
+        data = glob("../dataset/"+self.dataset+"/*")
+        base = np.array([get_image(sample_file, self.img_initial_size, is_crop=True) for sample_file in data[0:64]])
         base += 1
         base /= 2
 

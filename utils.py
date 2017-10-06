@@ -6,7 +6,8 @@ import pickle
 
 
 def get_image(image_path, image_size, is_crop=True):
-    return transform(imread(image_path), image_size, is_crop)
+    img = imread(image_path)
+    return transform(img, image_size, is_crop)
 
 def transform(image, npx=64, is_crop=True):
     # npx : # of pixels width/height of image
