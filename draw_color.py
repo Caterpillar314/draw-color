@@ -259,7 +259,7 @@ class Draw():
 
         print('Processing Dataset...')
         if rand :
-            processed_data = [ np.random.choice(256, (64, 64, 3)) for f in range(64)]
+            processed_data = [ np.random.randint(10, size=(64, 64, 3)) for f in range(64)]
         else :
             data = glob("../dataset/"+self.dataset+"/*")
             processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data[0:64]]
@@ -272,7 +272,10 @@ class Draw():
         path = "logs/"+self.dataset+"/results/"
         if not os.path.exists(path):
             os.makedirs(path)
-        ims(path+"base.jpg",merge_color(base,[8,8]))
+        if rand :
+            ims(path+"base_rnd.jpg", merge_color(base,[8,8]))
+        else :
+            ims(path+"base.jpg",merge_color(base,[8,8]))
 
         saver = tf.train.Saver(max_to_keep=2)
         saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/logs/"+self.dataset+"/checkpoints/"))
