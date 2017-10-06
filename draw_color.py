@@ -255,16 +255,19 @@ class Draw():
                         ims(path+str(e)+"-"+str(i)+"-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
 
 
-    def view(self):
+    def view(self, rand = False):
 
         print('Processing Dataset...')
-        data = glob("../dataset/"+self.dataset+"/*")
-        processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data]
+        if rand :
+            processed_data = [ np.random.choice(256, (64, 64, 3)) for f in range(64)]
+        else :
+            data = glob("../dataset/"+self.dataset+"/*")
+            processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data[0:64]]
 
         print('Started testing...')
-        base = np.array(processed_data[0:64])
+        base = np.array(processed_data)
         base += 1
-        base /= 2
+        np.true_divide(base, 2, out=base, casting='unsafe')
 
         path = "logs/"+self.dataset+"/results/"
         if not os.path.exists(path):
@@ -308,7 +311,10 @@ class Draw():
                         results_square[i,xpos:xpos2,ypos:ypos2,1] = 1;
                         results_square[i,xpos:xpos2,ypos:ypos2,2] = 0;
 
-            ims(path+"/view-clean-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
+            if rand :
+                ims(path+"/view-clean-step-rnd-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
+            else :
+                ims(path+"/view-clean-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
 
 def bool_arg(string):
     value = string.lower()
@@ -334,3 +340,4 @@ if __name__ == '__main__':
 
     if args.visualize :
         model.view()
+        model.view(rand = True)
