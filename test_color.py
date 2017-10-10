@@ -162,38 +162,32 @@ class Draw():
         wr = tf.reshape(wr, [self.batch_size, self.img_size * self.img_size * self.num_colors])
         return wr * tf.reshape(1.0/gamma, [-1, 1])
 
-
-
-    def main(self, args):
-
-        print('Started testing...')
+    def generate(self, batch_size=64) :
+        print('Started generating...')
 
         path = "logs/"+self.dataset+"/results/"
         if not os.path.exists(path):
             os.makedirs(path)
-
-        self.mu = [tf.random_normal((self.batch_size, self.n_z), mean=0, stddev=1) for i in range(10)]
-        self.sigma = [tf.random_normal((self.batch_size, self.n_z), mean=0, stddev=1) for i in range(10)]
-
         saver = tf.train.Saver(max_to_keep=2)
         saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/logs/"+self.dataset+"/checkpoints/"))
-        print('mu : '+str(self.mu))
-        print('sigma : '+str(self.sigma))
-        print('e : '+str(self.e))
-        print('cs : '+str(self.cs))
+
+        h_dec_prev = tf.zeros((batch_size, self.n_hidden))
+        dec_state = self.lstm_dec.zero_state(self.batch_size, tf.float32)
+
+        for t in range(self.sequence_length) :
+            c_prev = tf.zeros((self.batch_size, self.img_size * self.img_size * self.num_colors)) if t == 0 else self.cs[t-1]
+            z = tf.random_normal((batch_size, self.n_z), mean=0, stddev=1)
+            h_dec, dec_state = self.decode_layer(dec_state, z)
+            self.cs[t] = c_prev + self.write(h_dec)
+            h_dec_prev = h_dec
 
         cs, attn_params = self.sess.run([self.cs, self.attn_params])
-        #print("genloss %f latloss %f" % (gen_loss, lat_loss))
-        print('mu : '+str(self.mu))
-        print('sigma : '+str(self.sigma))
-        print('e : '+str(self.e))
-        print('cs : '+str(cs))
-
-        cs = 1.0/(1.0+np.exp(-np.array(cs))) # x_recons=sigmoid(canvas)
+        cs = 1.0/(1.0+np.exp(-np.array(cs)))
 
         for cs_iter in range(10):
             results = cs[cs_iter]
             results_square = np.reshape(results, [-1, self.img_size, self.img_size, self.num_colors])
+            ims(path+"gen-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
 
             for i in range(64):
                 center_x = int(attn_params[cs_iter][0][i][0])
@@ -220,10 +214,8 @@ class Draw():
                         results_square[i,xpos:xpos2,ypos:ypos2,1] = 1;
                         results_square[i,xpos:xpos2,ypos:ypos2,2] = 0;
 
-            
-            ims(path+"/view-clean-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
 
-
+            ims(path+"/gen-clean-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
 
 
 def bool_arg(string):
@@ -244,5 +236,4 @@ if __name__ == '__main__':
     args = get_arg_parser().parse_args()
 
     model = Draw(args)
-
-    model.main(args)
+    model.generate()
