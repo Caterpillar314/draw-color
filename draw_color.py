@@ -241,6 +241,7 @@ class Draw():
 
                 cs, attn_params, gen_loss, lat_loss, _ = self.sess.run([self.cs, self.attn_params, self.generation_loss, self.latent_loss, self.train_op], feed_dict={self.images: batch_images})
                 print("epoch %d iter %d genloss %f latloss %f" % (e, i, gen_loss, lat_loss))
+
                 # print attn_params[0].shape
                 # print attn_params[1].shape
                 # print attn_params[2].shape
@@ -277,11 +278,23 @@ class Draw():
         else :
             ims(path+"base.jpg",merge_color(base,[8,8]))
 
+        print('mu : '+str(self.mu))
+        print('sigma : '+str(self.sigma))
+
+        print('restore')
         saver = tf.train.Saver(max_to_keep=2)
         saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/logs/"+self.dataset+"/checkpoints/"))
 
+        print('mu : '+str(self.mu))
+        print('sigma : '+str(self.sigma))
+        print(self.mu.eval())
+
+        print('run session')
         cs, attn_params, gen_loss, lat_loss = self.sess.run([self.cs, self.attn_params, self.generation_loss, self.latent_loss], feed_dict={self.images: base})
         print("genloss %f latloss %f" % (gen_loss, lat_loss))
+
+        print('mu : '+str(self.mu))
+        print('sigma : '+str(self.sigma))
 
         cs = 1.0/(1.0+np.exp(-np.array(cs))) # x_recons=sigmoid(canvas)
 

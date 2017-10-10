@@ -15,7 +15,7 @@ class Draw():
 
         self.attention = args.attention
         self.attention_n = 5
-        self.read = self.read_attention if self.attention else self.read_basic
+        #self.read = self.read_attention if self.attention else self.read_basic
         self.write = self.write_attention if self.attention else self.write_basic
 
         self.n_hidden = 256
@@ -25,7 +25,7 @@ class Draw():
         self.share_parameters = False
 
         self.dataset = args.dataset
-        self.images = tf.placeholder(tf.float32, [None, self.img_size, self.img_size, self.num_colors])
+        #self.images = tf.placeholder(tf.float32, [None, self.img_size, self.img_size, self.num_colors])
 
         self.e = tf.random_normal((self.batch_size, self.n_z), mean=0, stddev=1) # Qsampler noise
 
@@ -39,16 +39,14 @@ class Draw():
         enc_state = self.lstm_enc.zero_state(self.batch_size, tf.float32)
         dec_state = self.lstm_dec.zero_state(self.batch_size, tf.float32)
 
-        x = tf.reshape(self.images, [-1, self.img_size*self.img_size*self.num_colors])
+        #x = tf.reshape(self.images, [-1, self.img_size*self.img_size*self.num_colors])
         self.attn_params = []
         for t in range(self.sequence_length):
             # error image + original image
             c_prev = tf.zeros((self.batch_size, self.img_size * self.img_size * self.num_colors)) if t == 0 else self.cs[t-1]
-            x_hat = x - tf.sigmoid(c_prev)
-            # read the image
-            r = self.read(x,x_hat,h_dec_prev)
+            #x_hat = x - tf.sigmoid(c_prev)
             # encode it to gauss distrib
-            self.mu[t], self.logsigma[t], self.sigma[t], enc_state = self.encode(enc_state, tf.concat([r, h_dec_prev], 1))
+            #self.mu[t], self.logsigma[t], self.sigma[t], enc_state = self.encode(enc_state, tf.concat([r, h_dec_prev], 1))
             # sample from the distrib to get z
             z = self.sampleQ(self.mu[t],self.sigma[t])
             # retrieve the hidden layer of RNN
@@ -61,22 +59,22 @@ class Draw():
         # the final timestep
         self.generated_images = tf.nn.sigmoid(self.cs[-1])
 
-        self.generation_loss = tf.nn.l2_loss(x - self.generated_images)
+        #self.generation_loss = tf.nn.l2_loss(x - self.generated_images)
 
         kl_terms = [0]*self.sequence_length
         for t in range(self.sequence_length):
             mu2 = tf.square(self.mu[t])
             sigma2 = tf.square(self.sigma[t])
             logsigma = self.logsigma[t]
-            kl_terms[t] = 0.5 * tf.reduce_sum(mu2 + sigma2 - 2*logsigma, 1) - self.sequence_length*0.5
-        self.latent_loss = tf.reduce_mean(tf.add_n(kl_terms))
-        self.cost = self.generation_loss + self.latent_loss
-        optimizer = tf.train.AdamOptimizer(1e-3, beta1=0.5)
-        grads = optimizer.compute_gradients(self.cost)
-        for i,(g,v) in enumerate(grads):
-            if g is not None:
-                grads[i] = (tf.clip_by_norm(g,5),v)
-        self.train_op = optimizer.apply_gradients(grads)
+            #kl_terms[t] = 0.5 * tf.reduce_sum(mu2 + sigma2 - 2*logsigma, 1) - self.sequence_length*0.5
+        #self.latent_loss = tf.reduce_mean(tf.add_n(kl_terms))
+        #self.cost = self.generation_loss + self.latent_loss
+        #optimizer = tf.train.AdamOptimizer(1e-3, beta1=0.5)
+        #grads = optimizer.compute_gradients(self.cost)
+        #for i,(g,v) in enumerate(grads):
+        #    if g is not None:
+        #        grads[i] = (tf.clip_by_norm(g,5),v)
+        #self.train_op = optimizer.apply_gradients(grads)
 
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
@@ -125,53 +123,6 @@ class Draw():
         return Fx, Fy
 
 
-    # the read() operation without attention
-    def read_basic(self, x, x_hat, h_dec_prev):
-        return tf.concat([x,x_hat], 1)
-
-    def read_attention(self, x, x_hat, h_dec_prev):
-        Fx, Fy, gamma = self.attn_window("read", h_dec_prev)
-        # we have the parameters for a patch of gaussian filters. apply them.
-        def filter_img(img, Fx, Fy, gamma):
-            # Fx,Fy = [64,5,32]
-            # img = [64, 32*32*3]
-
-            img = tf.reshape(img, [-1, self.img_size, self.img_size, self.num_colors])
-            img_t = tf.transpose(img, perm=[3,0,1,2])
-
-            # color1, color2, color3, color1, color2, color3, etc.
-            batch_colors_array = tf.reshape(img_t, [self.num_colors * self.batch_size, self.img_size, self.img_size])
-            Fx_array = tf.concat([Fx, Fx, Fx], 0)
-            Fy_array = tf.concat([Fy, Fy, Fy], 0)
-
-            Fxt = tf.transpose(Fx_array, perm=[0,2,1])
-
-            # Apply the gaussian patches:
-            glimpse = tf.matmul(Fy_array, tf.matmul(batch_colors_array, Fxt))
-            glimpse = tf.reshape(glimpse, [self.num_colors, self.batch_size, self.attention_n, self.attention_n])
-            glimpse = tf.transpose(glimpse, [1,2,3,0])
-            glimpse = tf.reshape(glimpse, [self.batch_size, self.attention_n*self.attention_n*self.num_colors])
-            # finally scale this glimpse w/ the gamma parameter
-            return glimpse * tf.reshape(gamma, [-1, 1])
-        x = filter_img(x, Fx, Fy, gamma)
-        x_hat = filter_img(x_hat, Fx, Fy, gamma)
-        return tf.concat([x, x_hat],1)
-
-    # encode an attention patch
-    def encode(self, prev_state, image):
-        # update the RNN with image
-        with tf.variable_scope("encoder",reuse=self.share_parameters):
-            hidden_layer, next_state = self.lstm_enc(image, prev_state)
-
-        # map the RNN hidden state to latent variables
-        with tf.variable_scope("mu", reuse=self.share_parameters):
-            mu = dense(hidden_layer, self.n_hidden, self.n_z)
-        with tf.variable_scope("sigma", reuse=self.share_parameters):
-            logsigma = dense(hidden_layer, self.n_hidden, self.n_z)
-            sigma = tf.exp(logsigma)
-        return mu, logsigma, sigma, next_state
-
-
     def sampleQ(self, mu, sigma):
         return mu + sigma*self.e
 
@@ -214,31 +165,29 @@ class Draw():
 
 
     def main(self, args):
-        print('Processing Dataset...')
-        if args.rand :
-            processed_data = [ np.random.randint(10, size=(64, 64, 3)) for f in range(64)]
-        else :
-            data = glob("../dataset/"+self.dataset+"/*")
-            processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data[0:64]]
 
         print('Started testing...')
-        base = np.array(processed_data)
-        base += 1
-        np.true_divide(base, 2, out=base, casting='unsafe')
 
         path = "logs/"+self.dataset+"/results/"
         if not os.path.exists(path):
             os.makedirs(path)
-        if args.rand :
-            ims(path+"base_rnd.jpg", merge_color(base,[8,8]))
-        else :
-            ims(path+"base.jpg",merge_color(base,[8,8]))
+
+        self.mu = [tf.random_normal((self.batch_size, self.n_z), mean=0, stddev=1) for i in range(10)]
+        self.sigma = [tf.random_normal((self.batch_size, self.n_z), mean=0, stddev=1) for i in range(10)]
 
         saver = tf.train.Saver(max_to_keep=2)
         saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/logs/"+self.dataset+"/checkpoints/"))
+        print('mu : '+str(self.mu))
+        print('sigma : '+str(self.sigma))
+        print('e : '+str(self.e))
+        print('cs : '+str(self.cs))
 
-        cs, attn_params, gen_loss, lat_loss = self.sess.run([self.cs, self.attn_params, self.generation_loss, self.latent_loss], feed_dict={self.images: base})
-        print("genloss %f latloss %f" % (gen_loss, lat_loss))
+        cs, attn_params = self.sess.run([self.cs, self.attn_params])
+        #print("genloss %f latloss %f" % (gen_loss, lat_loss))
+        print('mu : '+str(self.mu))
+        print('sigma : '+str(self.sigma))
+        print('e : '+str(self.e))
+        print('cs : '+str(cs))
 
         cs = 1.0/(1.0+np.exp(-np.array(cs))) # x_recons=sigmoid(canvas)
 
@@ -271,10 +220,8 @@ class Draw():
                         results_square[i,xpos:xpos2,ypos:ypos2,1] = 1;
                         results_square[i,xpos:xpos2,ypos:ypos2,2] = 0;
 
-            if args.rand :
-                ims(path+"/view-clean-step-rnd-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
-            else :
-                ims(path+"/view-clean-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
+            
+            ims(path+"/view-clean-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
 
 
 
@@ -290,7 +237,6 @@ def get_arg_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--dataset', default='CelebA', type=str, help="Which dataset to use", dest="dataset")
     parser.add_argument('-a', '--attention', default=True, type=bool_arg, help="Read and write with attention or not", dest="attention")
-    parser.add_argument('-r', '--random', default=False, type=bool_arg, help="Whether to test the agent with a random image.", dest="rand")
     return parser
 
 

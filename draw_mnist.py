@@ -89,10 +89,9 @@ class Draw():
             xtrain, _ = self.mnist.train.next_batch(self.batch_size)
             cs, gen_loss, lat_loss, _ = self.sess.run([self.cs, self.generation_loss, self.latent_loss, self.train_op], feed_dict={self.images: xtrain})
             print("iter %d genloss %f latloss %f" % (i, gen_loss, lat_loss))
+
             if i % 250 == 0:
-
                 cs = 1.0/(1.0+np.exp(-np.array(cs))) # x_recons=sigmoid(canvas)
-
                 for cs_iter in range(10):
                     results = cs[cs_iter]
                     results_square = np.reshape(results, [-1, 28, 28])
@@ -206,6 +205,26 @@ class Draw():
         wr = tf.reshape(wr, [self.batch_size, self.img_size**2])
         return wr * tf.reshape(1.0/gamma, [-1, 1])
 
+    def generate(self, batch_size=64) :
+        path="logs/mnist/results/"
+        h_dec_prev = tf.zeros((batch_size, self.n_hidden))
+        dec_state = self.lstm_dec.zero_state(self.batch_size, tf.float32)
+
+        for t in range(self.sequence_length) :
+            c_prev = tf.zeros((batch_size, self.img_size**2)) if t == 0 else self.cs[t-1]
+            z = tf.random_normal((batch_size, self.n_z), mean=0, stddev=1)
+            h_dec, dec_state = self.decode_layer(dec_state, z)
+            self.cs[t] = c_prev + self.write(h_dec)
+            h_dec_prev = h_dec
+
+        cs = self.sess.run(self.cs)
+        cs = 1.0/(1.0+np.exp(-np.array(cs)))
+        for cs_iter in range(10):
+            results = cs[cs_iter]
+            results_square = np.reshape(results, [-1, 28, 28])
+            ims(path+"gen-step-"+str(cs_iter)+".jpg",merge(results_square,[8,8]))
+
+
 
 def bool_arg(string):
     value = string.lower()
@@ -226,3 +245,4 @@ if __name__ == '__main__':
 
     model = Draw(args)
     model.train()
+    model.generate()
