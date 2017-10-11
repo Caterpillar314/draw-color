@@ -232,6 +232,7 @@ class Draw():
 
         with open(path+'results.csv', 'w', newline='') as csvfile :
             writer = csv.writer(csvfile, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            writer.writerow(['dim'+str(k) for k in range(self.n_z)])
 
             for i in range(nb_batch):
                 print('Batch : '+str(i))
