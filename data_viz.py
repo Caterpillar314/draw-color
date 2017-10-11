@@ -5,7 +5,7 @@ from utils import *
 from glob import glob
 import os
 import argparse
-import json
+import csv
 
 class Draw():
     def __init__(self, args):
@@ -23,7 +23,6 @@ class Draw():
         self.n_z = 10
         self.sequence_length = 10
         self.batch_size = 64
-        self.nb_epochs = args.nb_epochs
         self.share_parameters = False
 
         self.dataset = args.dataset
@@ -213,9 +212,7 @@ class Draw():
         wr = tf.reshape(wr, [self.batch_size, self.img_size * self.img_size * self.num_colors])
         return wr * tf.reshape(1.0/gamma, [-1, 1])
 
-
-
-    def generate(self, batch_size=64, nb_batch=100) :
+    def generate(self, batch_size=64, nb_batch=100, save_imgs=False) :
 
         print('Creating Dataset...')
 
@@ -231,28 +228,27 @@ class Draw():
         saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/logs/"+self.dataset+"/checkpoints/"))
 
         print('Processing data...')
-        res_dict = {}
-        for i in range(5):
-            print('Batch : '+str(i))
-            batch = processed_data[i*self.batch_size:(i+1)*self.batch_size]
-            batch_images = np.array(batch).astype(np.float32)
-            batch_images += 1
-            batch_images /= 2
 
-            mu = self.sess.run(self.mu, feed_dict={self.images: batch_images})
+        with open(path+'results.csv', 'w', newline='') as csvfile :
+            writer = csv.writer(csvfile, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
-            res_dict_temp = {}
-            for j in range(batch_size):
-                res_dict_temp[j] = mu[9][j].tolist()
-            res_dict[i] = res_dict_temp
+            for i in range(nb_batch):
+                print('Batch : '+str(i))
+                batch = processed_data[i*self.batch_size:(i+1)*self.batch_size]
+                batch_images = np.array(batch).astype(np.float32)
+                batch_images += 1
+                batch_images /= 2
 
-        if not os.path.exists(path+'0'):
-            os.makedirs(path+'0')
-        for j in range(batch_size):
-            ims(path+'0/img'+str(j)+'.jpg', processed_data[j])
+                mu = self.sess.run(self.mu, feed_dict={self.images: batch_images})
 
-        with open(path+'results.json', 'w') as f:
-            return json.dump(res_dict, f)
+                for j in range(batch_size):
+                    writer.writerow(mu[-1][j].tolist())
+
+                if save_imgs :
+                    if not os.path.exists(path+str(i)):
+                        os.makedirs(path+str(i))
+                    for j in range(batch_size):
+                        ims(path+str(i)+'/img'+str(j)+'.jpg', processed_data[i*self.batch_size+j])
 
 
 def bool_arg(string):
@@ -266,8 +262,8 @@ def get_arg_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--dataset', default='CelebA', type=str, help="Which dataset to use", dest="dataset")
     parser.add_argument('-a', '--attention', default=True, type=bool_arg, help="Read and write with attention or not", dest="attention")
-    parser.add_argument('-v', '--visualize', default=False, type=bool_arg, help="When using attention, whether to visualize or not the attention box", dest="visualize")
-    parser.add_argument('-n', '--nb_epochs', default=10, type=int, help="Number of epochs to train the agent", dest="nb_epochs")
+    parser.add_argument('-s', '--save_imgs', default=False, type=bool_arg, help="Whether to save the images or not", dest="save_imgs")
+    parser.add_argument('-n', '--nb_batch', default=10, type=int, help="Number of batches to analyse", dest="nb_batch")
     return parser
 
 
@@ -275,4 +271,4 @@ if __name__ == '__main__':
     args = get_arg_parser().parse_args()
 
     model = Draw(args)
-    model.generate()
+    model.generate(nb_batch=args.nb_batch, save_imgs=args.save_imgs)

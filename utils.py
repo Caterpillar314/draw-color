@@ -27,7 +27,7 @@ def center_crop(x, crop_h, crop_w=None, resize_w=64):
                                [resize_w, resize_w])
 
 def imread(path):
-    readimage = scipy.misc.imread(path, mode="RGB").astype(np.float)
+    readimage = scipy.misc.imread(path).astype(np.float)
     return readimage
 
 def merge_color(images, size):
@@ -48,8 +48,8 @@ def unpickle(file):
   return dict
 
 def ims(name, img):
-    # print img[:10][:10]
-    scipy.misc.toimage(img, cmin=0, cmax=1).save(name)
+    #scipy.misc.toimage(img, cmin=0, cmax=1).save(name)
+    scipy.misc.imsave(name, img)
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
