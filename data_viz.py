@@ -6,22 +6,23 @@ from glob import glob
 import os
 import argparse
 import csv
+import json
 
 class Draw():
-    def __init__(self, args):
+    def __init__(self, args, conf):
 
         self.img_size = 64
         self.img_initial_size = 128
         self.num_colors = 3
 
-        self.attention = args.attention
+        self.attention = conf['attention']
         self.attention_n = 5
         self.read = self.read_attention if self.attention else self.read_basic
         self.write = self.write_attention if self.attention else self.write_basic
 
         self.n_hidden = 256
-        self.n_z = 10
-        self.sequence_length = 10
+        self.n_z = conf['nz_dim']
+        self.sequence_length = conf['sequence_length']
         self.batch_size = 64
         self.share_parameters = False
 
@@ -260,8 +261,8 @@ def bool_arg(string):
 
 def get_arg_parser():
     parser = argparse.ArgumentParser()
+    parser.add_argument('-f', '--folder', default='logs/CelebA/', type=str, help="Folder where is stored the training checkpoints", dest="folder")
     parser.add_argument('-d', '--dataset', default='CelebA', type=str, help="Which dataset to use", dest="dataset")
-    parser.add_argument('-a', '--attention', default=True, type=bool_arg, help="Read and write with attention or not", dest="attention")
     parser.add_argument('-s', '--save_imgs', default=False, type=bool_arg, help="Whether to save the images or not", dest="save_imgs")
     parser.add_argument('-n', '--nb_batch', default=10, type=int, help="Number of batches to analyse", dest="nb_batch")
     return parser
@@ -270,5 +271,8 @@ def get_arg_parser():
 if __name__ == '__main__':
     args = get_arg_parser().parse_args()
 
-    model = Draw(args)
+    with open(args.folder+'args.json', 'r') as d :
+        conf = json.load(d)
+
+    model = Draw(args, conf)
     model.generate(nb_batch=args.nb_batch, save_imgs=args.save_imgs)

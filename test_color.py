@@ -5,27 +5,26 @@ from utils import *
 from glob import glob
 import os
 import argparse
+import json
 
 class Draw():
-    def __init__(self, args):
+    def __init__(self, conf):
 
         self.img_size = 64
         self.img_initial_size = 128
         self.num_colors = 3
 
-        self.attention = args.attention
+        self.attention = conf['attention']
         self.attention_n = 5
-        #self.read = self.read_attention if self.attention else self.read_basic
         self.write = self.write_attention if self.attention else self.write_basic
 
         self.n_hidden = 256
-        self.n_z = 10
-        self.sequence_length = 10
+        self.n_z = conf['nz_dim']
+        self.sequence_length = conf['sequence_length']
         self.batch_size = 64
         self.share_parameters = False
 
-        self.dataset = args.dataset
-        #self.images = tf.placeholder(tf.float32, [None, self.img_size, self.img_size, self.num_colors])
+        self.dataset = conf['dataset']
 
         self.e = tf.random_normal((self.batch_size, self.n_z), mean=0, stddev=1) # Qsampler noise
 
@@ -44,9 +43,6 @@ class Draw():
         for t in range(self.sequence_length):
             # error image + original image
             c_prev = tf.zeros((self.batch_size, self.img_size * self.img_size * self.num_colors)) if t == 0 else self.cs[t-1]
-            #x_hat = x - tf.sigmoid(c_prev)
-            # encode it to gauss distrib
-            #self.mu[t], self.logsigma[t], self.sigma[t], enc_state = self.encode(enc_state, tf.concat([r, h_dec_prev], 1))
             # sample from the distrib to get z
             z = self.sampleQ(self.mu[t],self.sigma[t])
             # retrieve the hidden layer of RNN
@@ -66,15 +62,6 @@ class Draw():
             mu2 = tf.square(self.mu[t])
             sigma2 = tf.square(self.sigma[t])
             logsigma = self.logsigma[t]
-            #kl_terms[t] = 0.5 * tf.reduce_sum(mu2 + sigma2 - 2*logsigma, 1) - self.sequence_length*0.5
-        #self.latent_loss = tf.reduce_mean(tf.add_n(kl_terms))
-        #self.cost = self.generation_loss + self.latent_loss
-        #optimizer = tf.train.AdamOptimizer(1e-3, beta1=0.5)
-        #grads = optimizer.compute_gradients(self.cost)
-        #for i,(g,v) in enumerate(grads):
-        #    if g is not None:
-        #        grads[i] = (tf.clip_by_norm(g,5),v)
-        #self.train_op = optimizer.apply_gradients(grads)
 
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
@@ -184,7 +171,7 @@ class Draw():
         cs, attn_params = self.sess.run([self.cs, self.attn_params])
         cs = 1.0/(1.0+np.exp(-np.array(cs)))
 
-        for cs_iter in range(10):
+        for cs_iter in range(self.sequence_length):
             results = cs[cs_iter]
             results_square = np.reshape(results, [-1, self.img_size, self.img_size, self.num_colors])
             ims(path+"gen-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
@@ -218,22 +205,17 @@ class Draw():
             ims(path+"/gen-clean-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
 
 
-def bool_arg(string):
-    value = string.lower()
-    if value == 'true': return True
-    elif value == 'false': return False
-    else: raise argparse.ArgumentTypeError("Expected True or False, but got {}".format(string))
-
-
 def get_arg_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--dataset', default='CelebA', type=str, help="Which dataset to use", dest="dataset")
-    parser.add_argument('-a', '--attention', default=True, type=bool_arg, help="Read and write with attention or not", dest="attention")
+    parser.add_argument('-f', '--folder', default='logs/CelebA/', type=str, help="Folder where is stored the training checkpoints", dest="folder")
     return parser
 
 
 if __name__ == '__main__':
     args = get_arg_parser().parse_args()
 
-    model = Draw(args)
+    with open(args.folder+'args.json', 'r') as d :
+        conf = json.load(d)
+
+    model = Draw(conf)
     model.generate()

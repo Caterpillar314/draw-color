@@ -5,6 +5,7 @@ from utils import *
 from glob import glob
 import os
 import argparse
+import json
 
 class Draw():
     def __init__(self, args):
@@ -19,8 +20,8 @@ class Draw():
         self.write = self.write_attention if self.attention else self.write_basic
 
         self.n_hidden = 256
-        self.n_z = 10
-        self.sequence_length = 10
+        self.n_z = args.nz_dim
+        self.sequence_length = args.sequence_length
         self.batch_size = 64
         self.nb_epochs = args.nb_epochs
         self.share_parameters = False
@@ -213,7 +214,14 @@ class Draw():
         return wr * tf.reshape(1.0/gamma, [-1, 1])
 
 
-    def train(self):
+    def train(self, args):
+
+        print('Saving parameters...')
+        args = vars(args)
+        if not os.path.exists("logs/"+self.dataset):
+            os.makedirs("logs/"+self.dataset)
+        with open("logs/"+self.dataset+'/args.json', 'w') as f:
+            json.dump(args, f)
 
         print('Processing Dataset...')
         data = glob("../dataset/"+self.dataset+"/*")
@@ -245,25 +253,23 @@ class Draw():
                 # print attn_params[0].shape
                 # print attn_params[1].shape
                 # print attn_params[2].shape
-                if i % 800 == 0:
+                if i==0 and e % 5 == 0:
                     saver.save(self.sess, os.getcwd()+"/logs/"+self.dataset+"/checkpoints/chkpt", global_step=e*10000 + i)
 
                     cs = 1.0/(1.0+np.exp(-np.array(cs))) # x_recons=sigmoid(canvas)
 
-                    for cs_iter in range(10):
+                    for cs_iter in range(self.sequence_length):
                         results = cs[cs_iter]
                         results_square = np.reshape(results, [-1, self.img_size, self.img_size, self.num_colors])
                         ims(path+str(e)+"-"+str(i)+"-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
 
 
-    def view(self, rand = False):
+    def view(self):
 
         print('Processing Dataset...')
-        if rand :
-            processed_data = [ np.random.randint(10, size=(64, 64, 3)) for f in range(64)]
-        else :
-            data = glob("../dataset/"+self.dataset+"/*")
-            processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data[0:64]]
+
+        data = glob("../dataset/"+self.dataset+"/*")
+        processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data[0:64]]
 
         print('Started testing...')
         base = np.array(processed_data)
@@ -273,10 +279,8 @@ class Draw():
         path = "logs/"+self.dataset+"/results/"
         if not os.path.exists(path):
             os.makedirs(path)
-        if rand :
-            ims(path+"base_rnd.jpg", merge_color(base,[8,8]))
-        else :
-            ims(path+"base.jpg",merge_color(base,[8,8]))
+
+        ims(path+"base.jpg",merge_color(base,[8,8]))
 
 
         print('restore')
@@ -289,7 +293,7 @@ class Draw():
 
         cs = 1.0/(1.0+np.exp(-np.array(cs))) # x_recons=sigmoid(canvas)
 
-        for cs_iter in range(10):
+        for cs_iter in range(self.sequence_length):
             results = cs[cs_iter]
             results_square = np.reshape(results, [-1, self.img_size, self.img_size, self.num_colors])
 
@@ -318,10 +322,8 @@ class Draw():
                         results_square[i,xpos:xpos2,ypos:ypos2,1] = 1;
                         results_square[i,xpos:xpos2,ypos:ypos2,2] = 0;
 
-            if rand :
-                ims(path+"/view-clean-step-rnd-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
-            else :
-                ims(path+"/view-clean-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
+
+            ims(path+"/view-clean-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
 
 def bool_arg(string):
     value = string.lower()
@@ -336,6 +338,8 @@ def get_arg_parser():
     parser.add_argument('-a', '--attention', default=True, type=bool_arg, help="Read and write with attention or not", dest="attention")
     parser.add_argument('-v', '--visualize', default=False, type=bool_arg, help="When using attention, whether to visualize or not the attention box", dest="visualize")
     parser.add_argument('-n', '--nb_epochs', default=10, type=int, help="Number of epochs to train the agent", dest="nb_epochs")
+    parser.add_argument('-nd', '--nz_dim', default=10, type=int, help="Number of dimensions for the latent code", dest="nz_dim")
+    parser.add_argument('-sl', '--sequence_length', default=10, type=int, help="Number of drawing steps", dest='sequence_length')
     return parser
 
 
@@ -343,8 +347,9 @@ if __name__ == '__main__':
     args = get_arg_parser().parse_args()
 
     model = Draw(args)
-    model.train()
+    print('train')
+    model.train(args)
+    print('view')
 
     if args.visualize :
         model.view()
-        model.view(rand = True)
