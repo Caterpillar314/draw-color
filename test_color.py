@@ -149,14 +149,14 @@ class Draw():
         wr = tf.reshape(wr, [self.batch_size, self.img_size * self.img_size * self.num_colors])
         return wr * tf.reshape(1.0/gamma, [-1, 1])
 
-    def generate(self, batch_size=64) :
+    def generate(self, args, batch_size=64) :
         print('Started generating...')
 
-        path = "logs/"+self.dataset+"/results/"
+        path = args.folder+"/results/"
         if not os.path.exists(path):
             os.makedirs(path)
         saver = tf.train.Saver(max_to_keep=2)
-        saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/logs/"+self.dataset+"/checkpoints/"))
+        saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/"+args.folder+"/checkpoints/"))
 
         h_dec_prev = tf.zeros((batch_size, self.n_hidden))
         dec_state = self.lstm_dec.zero_state(self.batch_size, tf.float32)
@@ -218,4 +218,4 @@ if __name__ == '__main__':
         conf = json.load(d)
 
     model = Draw(conf)
-    model.generate()
+    model.generate(args)

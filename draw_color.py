@@ -217,11 +217,11 @@ class Draw():
     def train(self, args):
 
         print('Saving parameters...')
-        args = vars(args)
-        if not os.path.exists("logs/"+self.dataset):
-            os.makedirs("logs/"+self.dataset)
-        with open("logs/"+self.dataset+'/args.json', 'w') as f:
-            json.dump(args, f)
+        args_var = vars(args)
+        if not os.path.exists("logs/"+args.name):
+            os.makedirs("logs/"+args.name)
+        with open("logs/"+args.name+'/args.json', 'w') as f:
+            json.dump(args_var, f)
 
         print('Processing Dataset...')
         data = glob("../dataset/"+self.dataset+"/*")
@@ -232,7 +232,7 @@ class Draw():
         base += 1
         base /= 2
 
-        path = "logs/"+self.dataset+"/results/"
+        path = "logs/"+args.name+"/results/"
         if not os.path.exists(path):
             os.makedirs(path)
         ims(path+"base.jpg",merge_color(base,[8,8]))
@@ -254,7 +254,7 @@ class Draw():
                 # print attn_params[1].shape
                 # print attn_params[2].shape
                 if i==0 and e % 5 == 0:
-                    saver.save(self.sess, os.getcwd()+"/logs/"+self.dataset+"/checkpoints/chkpt", global_step=e*10000 + i)
+                    saver.save(self.sess, os.getcwd()+"/logs/"+args.name+"/checkpoints/chkpt", global_step=e*10000 + i)
 
                     cs = 1.0/(1.0+np.exp(-np.array(cs))) # x_recons=sigmoid(canvas)
 
@@ -264,7 +264,7 @@ class Draw():
                         ims(path+str(e)+"-"+str(i)+"-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
 
 
-    def view(self):
+    def view(self, args):
 
         print('Processing Dataset...')
 
@@ -276,7 +276,7 @@ class Draw():
         base += 1
         np.true_divide(base, 2, out=base, casting='unsafe')
 
-        path = "logs/"+self.dataset+"/results/"
+        path = "logs/"+args.name+"/results/"
         if not os.path.exists(path):
             os.makedirs(path)
 
@@ -285,7 +285,7 @@ class Draw():
 
         print('restore')
         saver = tf.train.Saver(max_to_keep=2)
-        saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/logs/"+self.dataset+"/checkpoints/"))
+        saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/logs/"+args.name+"/checkpoints/"))
 
         print('run session')
         cs, attn_params, gen_loss, lat_loss = self.sess.run([self.cs, self.attn_params, self.generation_loss, self.latent_loss], feed_dict={self.images: base})
@@ -337,9 +337,10 @@ def get_arg_parser():
     parser.add_argument('-d', '--dataset', default='CelebA', type=str, help="Which dataset to use", dest="dataset")
     parser.add_argument('-a', '--attention', default=True, type=bool_arg, help="Read and write with attention or not", dest="attention")
     parser.add_argument('-v', '--visualize', default=False, type=bool_arg, help="When using attention, whether to visualize or not the attention box", dest="visualize")
-    parser.add_argument('-n', '--nb_epochs', default=10, type=int, help="Number of epochs to train the agent", dest="nb_epochs")
+    parser.add_argument('-ne', '--nb_epochs', default=10, type=int, help="Number of epochs to train the agent", dest="nb_epochs")
     parser.add_argument('-nd', '--nz_dim', default=10, type=int, help="Number of dimensions for the latent code", dest="nz_dim")
     parser.add_argument('-sl', '--sequence_length', default=10, type=int, help="Number of drawing steps", dest='sequence_length')
+    parser.add_argument('-n', '--name', default='Exp', type=str, help="Which name to give to your experiment", dest="name")
     return parser
 
 
@@ -347,9 +348,7 @@ if __name__ == '__main__':
     args = get_arg_parser().parse_args()
 
     model = Draw(args)
-    print('train')
     model.train(args)
-    print('view')
 
     if args.visualize :
-        model.view()
+        model.view(args)

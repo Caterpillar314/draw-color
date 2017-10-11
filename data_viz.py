@@ -213,7 +213,7 @@ class Draw():
         wr = tf.reshape(wr, [self.batch_size, self.img_size * self.img_size * self.num_colors])
         return wr * tf.reshape(1.0/gamma, [-1, 1])
 
-    def generate(self, batch_size=64, nb_batch=100, save_imgs=False) :
+    def generate(self, args, batch_size=64, nb_batch=100, save_imgs=False) :
 
         print('Creating Dataset...')
 
@@ -222,11 +222,11 @@ class Draw():
 
         print('Restoring network...')
 
-        path = "logs/"+self.dataset+"/dataviz/"
+        path = args.folder+"/dataviz/"
         if not os.path.exists(path):
             os.makedirs(path)
         saver = tf.train.Saver(max_to_keep=2)
-        saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/logs/"+self.dataset+"/checkpoints/"))
+        saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/"+args.folder+"/checkpoints/"))
 
         print('Processing data...')
 
@@ -275,4 +275,4 @@ if __name__ == '__main__':
         conf = json.load(d)
 
     model = Draw(args, conf)
-    model.generate(nb_batch=args.nb_batch, save_imgs=args.save_imgs)
+    model.generate(args, nb_batch=args.nb_batch, save_imgs=args.save_imgs)
