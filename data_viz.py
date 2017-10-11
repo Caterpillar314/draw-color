@@ -5,6 +5,7 @@ from utils import *
 from glob import glob
 import os
 import argparse
+import json
 
 class Draw():
     def __init__(self, args):
@@ -213,115 +214,46 @@ class Draw():
         return wr * tf.reshape(1.0/gamma, [-1, 1])
 
 
-    def train(self):
 
-        print('Processing Dataset...')
+    def generate(self, batch_size=64, nb_batch=100) :
+
+        print('Creating Dataset...')
+
         data = glob("../dataset/"+self.dataset+"/*")
-        processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data]
+        processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data[0:batch_size*nb_batch]]
 
-        print('Started training...')
-        base = np.array(processed_data[0:64])
-        base += 1
-        base /= 2
+        print('Restoring network...')
 
-        path = "logs/"+self.dataset+"/results/"
+        path = "logs/"+self.dataset+"/dataviz/"
         if not os.path.exists(path):
             os.makedirs(path)
-        ims(path+"base.jpg",merge_color(base,[8,8]))
-
-        saver = tf.train.Saver(max_to_keep=2)
-
-        for e in range(self.nb_epochs):
-            for i in range(int((len(data) / self.batch_size)) - 2):
-
-                batch = processed_data[i*self.batch_size:(i+1)*self.batch_size]
-                batch_images = np.array(batch).astype(np.float32)
-                batch_images += 1
-                batch_images /= 2
-
-                cs, attn_params, gen_loss, lat_loss, _ = self.sess.run([self.cs, self.attn_params, self.generation_loss, self.latent_loss, self.train_op], feed_dict={self.images: batch_images})
-                print("epoch %d iter %d genloss %f latloss %f" % (e, i, gen_loss, lat_loss))
-
-                # print attn_params[0].shape
-                # print attn_params[1].shape
-                # print attn_params[2].shape
-                if i % 800 == 0:
-                    saver.save(self.sess, os.getcwd()+"/logs/"+self.dataset+"/checkpoints/chkpt", global_step=e*10000 + i)
-
-                    cs = 1.0/(1.0+np.exp(-np.array(cs))) # x_recons=sigmoid(canvas)
-
-                    for cs_iter in range(10):
-                        results = cs[cs_iter]
-                        results_square = np.reshape(results, [-1, self.img_size, self.img_size, self.num_colors])
-                        ims(path+str(e)+"-"+str(i)+"-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
-
-
-    def view(self, rand = False):
-
-        print('Processing Dataset...')
-        if rand :
-            processed_data = [ np.random.randint(10, size=(64, 64, 3)) for f in range(64)]
-        else :
-            data = glob("../dataset/"+self.dataset+"/*")
-            processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data[0:64]]
-
-        print('Started testing...')
-        base = np.array(processed_data)
-        base += 1
-        np.true_divide(base, 2, out=base, casting='unsafe')
-
-        path = "logs/"+self.dataset+"/results/"
-        if not os.path.exists(path):
-            os.makedirs(path)
-        if rand :
-            ims(path+"base_rnd.jpg", merge_color(base,[8,8]))
-        else :
-            ims(path+"base.jpg",merge_color(base,[8,8]))
-
-
-        print('restore')
         saver = tf.train.Saver(max_to_keep=2)
         saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/logs/"+self.dataset+"/checkpoints/"))
 
-        print('run session')
-        cs, attn_params, gen_loss, lat_loss = self.sess.run([self.cs, self.attn_params, self.generation_loss, self.latent_loss], feed_dict={self.images: base})
-        print("genloss %f latloss %f" % (gen_loss, lat_loss))
+        print('Processing data...')
+        res_dict = {}
+        for i in range(5):
+            print('Batch : '+str(i))
+            batch = processed_data[i*self.batch_size:(i+1)*self.batch_size]
+            batch_images = np.array(batch).astype(np.float32)
+            batch_images += 1
+            batch_images /= 2
 
-        cs = 1.0/(1.0+np.exp(-np.array(cs))) # x_recons=sigmoid(canvas)
+            mu = self.sess.run(self.mu, feed_dict={self.images: batch_images})
 
-        for cs_iter in range(10):
-            results = cs[cs_iter]
-            results_square = np.reshape(results, [-1, self.img_size, self.img_size, self.num_colors])
+            res_dict_temp = {}
+            for j in range(batch_size):
+                res_dict_temp[j] = mu[9][j].tolist()
+            res_dict[i] = res_dict_temp
 
-            for i in range(64):
-                center_x = int(attn_params[cs_iter][0][i][0])
-                center_y = int(attn_params[cs_iter][1][i][0])
-                distance = int(attn_params[cs_iter][2][i][0])
+        if not os.path.exists(path+'0'):
+            os.makedirs(path+'0')
+        for j in range(batch_size):
+            ims(path+'0/img'+str(j)+'.jpg', processed_data[j])
 
-                size = 2;
+        with open(path+'results.json', 'w') as f:
+            return json.dump(res_dict, f)
 
-                for x in range(3):
-                    for y in range(3):
-                        nx = x - 1;
-                        ny = y - 1;
-
-                        xpos = center_x + nx*distance
-                        ypos = center_y + ny*distance
-
-                        xpos2 = min(max(0, xpos + size), 63)
-                        ypos2 = min(max(0, ypos + size), 63)
-
-                        xpos = min(max(0, xpos), 63)
-                        ypos = min(max(0, ypos), 63)
-
-                        results_square[i,xpos:xpos2,ypos:ypos2,0] = 0;
-                        results_square[i,xpos:xpos2,ypos:ypos2,1] = 1;
-                        results_square[i,xpos:xpos2,ypos:ypos2,2] = 0;
-
-            if rand :
-                ims(path+"/view-clean-step-rnd-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
-            else :
-                ims(path+"/view-clean-step-"+str(cs_iter)+".jpg",merge_color(results_square,[8,8]))
 
 def bool_arg(string):
     value = string.lower()
@@ -343,8 +275,4 @@ if __name__ == '__main__':
     args = get_arg_parser().parse_args()
 
     model = Draw(args)
-    model.train()
-
-    if args.visualize :
-        model.view()
-        model.view(rand = True)
+    model.generate()
