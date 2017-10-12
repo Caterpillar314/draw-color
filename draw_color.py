@@ -11,7 +11,7 @@ class Draw():
     def __init__(self, args):
 
         self.img_size = 64
-        self.img_initial_size = 128
+        self.img_initial_size = 64
         self.num_colors = 3
 
         self.attention = args.attention
@@ -225,7 +225,7 @@ class Draw():
 
         print('Processing Dataset...')
         data = glob("../dataset/"+self.dataset+"/*")
-        processed_data = [imread(f) for f in data]
+        processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data]
 
         print('Started training...')
         base = np.array(processed_data[0:64])
@@ -269,7 +269,7 @@ class Draw():
         print('Processing Dataset...')
 
         data = glob("../dataset/"+self.dataset+"/*")
-        processed_data = [imread(f) for f in data[0:64]]
+        processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data[0:64]]
 
         print('Started testing...')
         base = np.array(processed_data)

@@ -12,7 +12,7 @@ class Draw():
     def __init__(self, args, conf):
 
         self.img_size = 64
-        self.img_initial_size = 128
+        self.img_initial_size = 64
         self.num_colors = 3
 
         self.attention = conf['attention']
@@ -218,7 +218,7 @@ class Draw():
         print('Creating Dataset...')
 
         data = glob("../dataset/"+self.dataset+"/*")
-        processed_data = [imread(f) for f in data[0:batch_size*nb_batch]]
+        processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data[0:batch_size*nb_batch]]
 
         print('Restoring network...')
 
