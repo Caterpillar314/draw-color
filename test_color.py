@@ -18,7 +18,7 @@ class Draw():
         self.attention_n = 5
         self.write = self.write_attention if self.attention else self.write_basic
 
-        self.n_hidden = 256
+        self.n_hidden = conf['n_hidden']
         self.n_z = conf['nz_dim']
         self.sequence_length = conf['sequence_length']
         self.batch_size = 64

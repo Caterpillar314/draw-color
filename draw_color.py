@@ -19,7 +19,7 @@ class Draw():
         self.read = self.read_attention if self.attention else self.read_basic
         self.write = self.write_attention if self.attention else self.write_basic
 
-        self.n_hidden = 256
+        self.n_hidden = args.n_hidden
         self.n_z = args.nz_dim
         self.sequence_length = args.sequence_length
         self.batch_size = 64
@@ -225,7 +225,7 @@ class Draw():
 
         print('Processing Dataset...')
         data = glob("../dataset/"+self.dataset+"/*")
-        processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data]
+        processed_data = [imread(f) for f in data]
 
         print('Started training...')
         base = np.array(processed_data[0:64])
@@ -269,7 +269,7 @@ class Draw():
         print('Processing Dataset...')
 
         data = glob("../dataset/"+self.dataset+"/*")
-        processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data[0:64]]
+        processed_data = [imread(f) for f in data[0:64]]
 
         print('Started testing...')
         base = np.array(processed_data)
@@ -341,6 +341,7 @@ def get_arg_parser():
     parser.add_argument('-nd', '--nz_dim', default=10, type=int, help="Number of dimensions for the latent code", dest="nz_dim")
     parser.add_argument('-sl', '--sequence_length', default=10, type=int, help="Number of drawing steps", dest='sequence_length')
     parser.add_argument('-n', '--name', default='Exp', type=str, help="Which name to give to your experiment", dest="name")
+    parser.add_argument('-nh', '--n_hidden', default=256, type=int, help="Number of hidden layer in the neural network", dest="n_hidden")
     return parser
 
 

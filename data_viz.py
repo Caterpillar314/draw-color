@@ -20,7 +20,7 @@ class Draw():
         self.read = self.read_attention if self.attention else self.read_basic
         self.write = self.write_attention if self.attention else self.write_basic
 
-        self.n_hidden = 256
+        self.n_hidden = conf['n_hidden']
         self.n_z = conf['nz_dim']
         self.sequence_length = conf['sequence_length']
         self.batch_size = 64
@@ -218,7 +218,7 @@ class Draw():
         print('Creating Dataset...')
 
         data = glob("../dataset/"+self.dataset+"/*")
-        processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data[0:batch_size*nb_batch]]
+        processed_data = [imread(f) for f in data[0:batch_size*nb_batch]]
 
         print('Restoring network...')
 
