@@ -7,24 +7,25 @@ import argparse
 import os
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
+import json
 
 
 class Draw():
-    def __init__(self, args):
+    def __init__(self, conf):
         self.mnist = input_data.read_data_sets("../dataset/mnist/", one_hot=True)
         self.n_samples = self.mnist.train.num_examples
 
         self.img_size = 28
-        self.attention = args.attention
+        self.attention = conf['attention']
         self.attention_n = 5
         self.read = self.read_attention if self.attention else self.read_basic
         self.write = self.write_attention if self.attention else self.write_basic
 
-        self.n_hidden = 256
-        self.n_z = 10
-        self.sequence_length = 10
+        self.n_hidden = conf['n_hidden']
+        self.n_z = conf['nz_dim']
+        self.sequence_length = conf['sequence_length']
         self.batch_size = 64
-        self.nb_steps = args.nb_steps
+        self.nb_steps = conf['nb_steps']
         self.share_parameters = False
 
         self.images = tf.placeholder(tf.float32, [None, 784])
@@ -79,24 +80,6 @@ class Draw():
 
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
-
-    def train(self):
-        print('Started training...')
-        path="logs/mnist/results/"
-        if not os.path.exists(path):
-            os.makedirs(path)
-
-        for i in range(self.nb_steps):
-            xtrain, _ = self.mnist.train.next_batch(self.batch_size)
-            cs, gen_loss, lat_loss, _ = self.sess.run([self.cs, self.generation_loss, self.latent_loss, self.train_op], feed_dict={self.images: xtrain})
-            print("iter %d genloss %f latloss %f" % (i, gen_loss, lat_loss))
-
-            if i % 250 == 0:
-                cs = 1.0/(1.0+np.exp(-np.array(cs))) # x_recons=sigmoid(canvas)
-                for cs_iter in range(10):
-                    results = cs[cs_iter]
-                    results_square = np.reshape(results, [-1, 28, 28])
-                    ims(path+str(i)+"-step-"+str(cs_iter)+".jpg",merge(results_square,[8,8]))
 
 
     # given a hidden decoder layer:
@@ -206,9 +189,15 @@ class Draw():
         wr = tf.reshape(wr, [self.batch_size, self.img_size**2])
         return wr * tf.reshape(1.0/gamma, [-1, 1])
 
-    def generate(self, batch_size=64) :
+    def generate(self, args, batch_size=64) :
         print('Started generating...')
-        path="logs/mnist/results/"
+
+        path = args.folder+"/results/"
+        if not os.path.exists(path):
+            os.makedirs(path)
+        saver = tf.train.Saver(max_to_keep=2)
+        saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/"+args.folder+"/checkpoints/"))
+
         h_dec_prev = tf.zeros((batch_size, self.n_hidden))
         dec_state = self.lstm_dec.zero_state(self.batch_size, tf.float32)
 
@@ -226,28 +215,6 @@ class Draw():
             results_square = np.reshape(results, [-1, 28, 28])
             ims(path+"gen-step-"+str(cs_iter)+".jpg",merge(results_square,[8,8]))
 
-    def data_viz(self):
-        print('Started data_viz...')
-        path="logs/mnist/dataviz/"
-        if not os.path.exists(path):
-            os.makedirs(path)
-
-        X = np.zeros((self.batch_size * 80, self.n_z), dtype=np.float32)
-        for i in range(80):
-            print('Batch : '+str(i))
-            xtrain, _ = self.mnist.train.next_batch(self.batch_size)
-            mu = self.sess.run(self.mu, feed_dict={self.images: xtrain})
-
-            for j in range(self.batch_size):
-                X[i*self.batch_size+j] = mu[-1][j].tolist()
-
-        X_embedded = TSNE().fit_transform(X)
-        print(X_embedded.shape)
-
-        plt.scatter(X_embedded[:,0], X_embedded[:,1])
-        plt.savefig("logs/mnist/dataviz/data_viz-n"+str(80)+".png")
-
-
 
 def bool_arg(string):
     value = string.lower()
@@ -258,15 +225,15 @@ def bool_arg(string):
 
 def get_arg_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-a', '--attention', default=True, type=bool_arg, help="Read and write with attention or not", dest="attention")
-    parser.add_argument('-n', '--nb_steps', default=15000, type=int, help="Number of steps to train the agent", dest="nb_steps")
+    parser.add_argument('-f', '--folder', default='logs/CelebA/', type=str, help="Folder where is stored the training checkpoints", dest="folder")
     return parser
 
 
 if __name__ == '__main__':
     args = get_arg_parser().parse_args()
 
-    model = Draw(args)
-    model.train()
-    model.generate()
-    model.data_viz()
+    with open(args.folder+'args.json', 'r') as d :
+        conf = json.load(d)
+
+    model = Draw(conf)
+    model.generate(args)
