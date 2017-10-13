@@ -7,6 +7,8 @@ import os
 import argparse
 import csv
 import json
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
 
 class Draw():
     def __init__(self, args, conf):
@@ -230,8 +232,9 @@ class Draw():
 
         print('Processing data...')
 
+        X = np.zeros((batch_size * nb_batch, self.n_z), dtype=np.float32)
         with open(path+'results.csv', 'w', newline='') as csvfile :
-            writer = csv.writer(csvfile, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
             writer.writerow(['dim'+str(k) for k in range(self.n_z)])
 
             for i in range(nb_batch):
@@ -245,12 +248,18 @@ class Draw():
 
                 for j in range(batch_size):
                     writer.writerow(mu[-1][j].tolist())
+                    X[i*self.batch_size+j] = mu[-1][j].tolist()
 
                 if save_imgs :
                     if not os.path.exists(path+str(i)):
                         os.makedirs(path+str(i))
                     for j in range(batch_size):
                         ims(path+str(i)+'/img'+str(j)+'.jpg', processed_data[i*self.batch_size+j])
+        X_embedded = TSNE().fit_transform(X)
+        print(X_embedded.shape)
+
+        plt.scatter(X_embedded[:,0], X_embedded[:,1])
+        plt.savefig(args.folder+"/dataviz/data_viz.png")
 
 
 def bool_arg(string):
