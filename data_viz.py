@@ -9,6 +9,7 @@ import csv
 import json
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
+from random import shuffle
 
 class Draw():
     def __init__(self, args, conf):
@@ -220,6 +221,7 @@ class Draw():
         print('Creating Dataset...')
 
         data = glob("../dataset/"+self.dataset+"/*")
+        shuffle(data)
         processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data[0:batch_size*nb_batch]]
 
         print('Restoring network...')

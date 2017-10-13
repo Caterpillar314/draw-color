@@ -6,6 +6,7 @@ from glob import glob
 import os
 import argparse
 import json
+from random import shuffle
 
 class Draw():
     def __init__(self, args):
@@ -225,6 +226,7 @@ class Draw():
 
         print('Processing Dataset...')
         data = glob("../dataset/"+self.dataset+"/*")
+        shuffle(data)
         processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data]
 
         print('Started training...')
@@ -269,6 +271,7 @@ class Draw():
         print('Processing Dataset...')
 
         data = glob("../dataset/"+self.dataset+"/*")
+        shuffle(data)
         processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data[0:64]]
 
         print('Started testing...')
