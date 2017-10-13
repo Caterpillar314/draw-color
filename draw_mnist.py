@@ -5,7 +5,8 @@ from utils import *
 import input_data
 import argparse
 import os
-# from scipy.misc import imsave as ims
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
 
 
 class Draw():
@@ -206,6 +207,7 @@ class Draw():
         return wr * tf.reshape(1.0/gamma, [-1, 1])
 
     def generate(self, batch_size=64) :
+        print('Started generating...')
         path="logs/mnist/results/"
         h_dec_prev = tf.zeros((batch_size, self.n_hidden))
         dec_state = self.lstm_dec.zero_state(self.batch_size, tf.float32)
@@ -223,6 +225,27 @@ class Draw():
             results = cs[cs_iter]
             results_square = np.reshape(results, [-1, 28, 28])
             ims(path+"gen-step-"+str(cs_iter)+".jpg",merge(results_square,[8,8]))
+
+    def data_viz(self):
+        print('Started data_viz...')
+        path="logs/mnist/dataviz/"
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        X = np.zeros((self.batch_size * 80, self.n_z), dtype=np.float32)
+        for i in range(80):
+            print('Batch : '+str(i))
+            xtrain, _ = self.mnist.train.next_batch(self.batch_size)
+            mu = self.sess.run(self.mu, feed_dict={self.images: xtrain})
+
+            for j in range(self.batch_size):
+                X[i*self.batch_size+j] = mu[-1][j].tolist()
+
+        X_embedded = TSNE().fit_transform(X)
+        print(X_embedded.shape)
+
+        plt.scatter(X_embedded[:,0], X_embedded[:,1])
+        plt.savefig("logs/mnist/dataviz/data_viz-n"+str(80)+".png")
 
 
 
@@ -246,3 +269,4 @@ if __name__ == '__main__':
     model = Draw(args)
     model.train()
     model.generate()
+    model.data_viz()
