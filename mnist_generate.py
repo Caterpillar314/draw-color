@@ -203,7 +203,9 @@ class Draw():
 
         for t in range(self.sequence_length) :
             c_prev = tf.zeros((batch_size, self.img_size**2)) if t == 0 else self.cs[t-1]
-            z = tf.random_normal((batch_size, self.n_z), mean=0, stddev=1)
+            mean_array = 2*args.max_mean*np.random.rand(batch_size, self.n_z) - args.max_mean
+            z_array = np.random.normal(mean_array, args.std)
+            z = tf.convert_to_tensor(z_array, dtype=tf.float32)
             h_dec, dec_state = self.decode_layer(dec_state, z)
             self.cs[t] = c_prev + self.write(h_dec)
             h_dec_prev = h_dec
@@ -213,7 +215,7 @@ class Draw():
         for cs_iter in range(10):
             results = cs[cs_iter]
             results_square = np.reshape(results, [-1, 28, 28])
-            ims(path+"gen-step-"+str(cs_iter)+".jpg",merge(results_square,[8,8]))
+            ims(path+"gen-step-"+str(cs_iter)+"-mmean"+str(args.max_mean)+"-std"+str(args.std)+".jpg",merge(results_square,[8,8]))
 
 
 def bool_arg(string):
@@ -226,6 +228,8 @@ def bool_arg(string):
 def get_arg_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--folder', default='logs/CelebA/', type=str, help="Folder where is stored the training checkpoints", dest="folder")
+    parser.add_argument('-s', '--std', default=1., type=float, help="Standard deviation for generating the latent vector", dest="std")
+    parser.add_argument('-m', '--max_mean', default=0., type=float, help="Maximum mean for latent vector", dest="max_mean")
     return parser
 
 
