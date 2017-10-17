@@ -192,7 +192,7 @@ class Draw():
     def generate(self, args, batch_size=64) :
         print('Started generating...')
 
-        path = args.folder+"/results/"
+        path = args.folder+"/generation/"
         if not os.path.exists(path):
             os.makedirs(path)
         saver = tf.train.Saver(max_to_keep=2)
@@ -216,13 +216,6 @@ class Draw():
             results = cs[cs_iter]
             results_square = np.reshape(results, [-1, 28, 28])
             ims(path+"gen-step-"+str(cs_iter)+"-mmean"+str(args.max_mean)+"-std"+str(args.std)+".jpg",merge(results_square,[8,8]))
-
-
-def bool_arg(string):
-    value = string.lower()
-    if value == 'true': return True
-    elif value == 'false': return False
-    else: raise argparse.ArgumentTypeError("Expected True or False, but got {}".format(string))
 
 
 def get_arg_parser():

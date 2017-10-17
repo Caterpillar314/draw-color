@@ -2,3 +2,4 @@
 .gz
 .jpg
 logs/
+__pycache__/
