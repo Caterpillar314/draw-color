@@ -29,7 +29,7 @@ class Draw():
         self.batch_size = 64
         self.share_parameters = False
 
-        self.dataset = args.dataset
+        self.dataset = conf['dataset']
         self.images = tf.placeholder(tf.float32, [None, self.img_size, self.img_size, self.num_colors])
 
         self.e = tf.random_normal((self.batch_size, self.n_z), mean=0, stddev=1) # Qsampler noise
@@ -261,7 +261,7 @@ class Draw():
         print(X_embedded.shape)
 
         plt.scatter(X_embedded[:,0], X_embedded[:,1])
-        plt.savefig(args.folder+"/dataviz/data_viz-n"+str(nb_batch)+"-p"+str(args.perplexity)+".png")
+        plt.savefig(args.folder+"/dataviz/dataviz-n"+str(nb_batch)+"-p"+str(args.perplexity)+".png")
 
 
 def bool_arg(string):
@@ -274,7 +274,6 @@ def bool_arg(string):
 def get_arg_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--folder', default='logs/CelebA/', type=str, help="Folder where is stored the training checkpoints", dest="folder")
-    parser.add_argument('-d', '--dataset', default='CelebA', type=str, help="Which dataset to use", dest="dataset")
     parser.add_argument('-s', '--save_imgs', default=False, type=bool_arg, help="Whether to save the images or not", dest="save_imgs")
     parser.add_argument('-n', '--nb_batch', default=10, type=int, help="Number of batches to analyse", dest="nb_batch")
     parser.add_argument('-p', '--perplexity', default=30, type=int, help="Perplexity for TSNE", dest="perplexity")

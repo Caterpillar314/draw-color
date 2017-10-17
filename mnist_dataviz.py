@@ -210,7 +210,7 @@ class Draw():
         print(X_embedded.shape)
 
         plt.scatter(X_embedded[:,0], X_embedded[:,1])
-        plt.savefig(args.folder+"/dataviz/data_viz-n"+str(80)+".png")
+        plt.savefig(args.folder+"/dataviz/dataviz-n"+str(nb_batch)+".png")
 
 
 
