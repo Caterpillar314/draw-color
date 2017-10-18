@@ -1,0 +1,1 @@
+{"visualize": true, "nb_epochs": 25, "dataset": "CelebA", "n_hidden": 256, "nz_dim": 10, "img_size": 178, "attention": true, "sequence_length": 10, "name": "CelebA"}

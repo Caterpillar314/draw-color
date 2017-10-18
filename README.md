@@ -1,26 +1,106 @@
-# draw-color
-A Tensorflow implementation of [DRAW](https://arxiv.org/abs/1502.04623). Now includes support for colored images!
+# DRAW
 
-This is code to accompany [my post on the DRAW model](http://kvfrans.com/what-is-draw-deep-recurrent-attentive-writer/).
+A Tensorflow implementation of [DRAW](https://arxiv.org/abs/1502.04623). Now includes support for colored images !
 
-For an explanation of how I modified the original DRAW into a colored model, check out [my post on colorizing DRAW](http://kvfrans.com/colorizing-the-draw-model/).
+<img align="left" src="examples/mnist/mnist-draw.gif" width="420" height="420" />
+<img align="left" src="examples/CelebA/CelebA-draw-clean.gif" width="420" height="420" />
 
-<img src="http://kvfrans.com/content/images/2016/10/res_noattn.gif">
-<img src="http://kvfrans.com/content/images/2016/10/res_attention.gif">
 
-<img src="http://kvfrans.com/content/images/2016/12/output_Y5Da6R.gif">
-<img src="http://kvfrans.com/content/images/2016/12/output_ckIGZC.gif">
 
-The original DRAW is a slightly rewritten, commented version of [ericjang's implementation](https://github.com/ericjang/draw), running on MNIST.
+This is a slightly rewritten version of [kvfrans's implementation](https://github.com/kvfrans/draw-color).
 
-Usage:
-```
-python main.py
-```
+This version now includes functions to generate new images similar to the dataset and visualize the latent vectors of the dataset with TSNE.
 
-The colored DRAW runs on the celebA dataset.
 
-Usage:
-```
-python color.py
-```
+
+
+# Drawing MNIST
+
+## Training
+
+* ```python3 mnist_train.py -n test_mnist```
+
+<img align="right" src="examples/mnist/mnist-draw.gif" width="250" height="250" />
+
+The checkpoints and results will be saved in ```logs/test_mnist```.
+The parameters of the training are saved in ```logs/test_mnist/args.json```.
+
+You can use the following options for the training :
+* ``` -a ``` : Whether to read and write images with attention or not (see [DRAW](https://arxiv.org/abs/1502.04623) for more information). Default : True.
+* ``` -nd ``` : Number of dimensions of the latent vector. Default : 10.
+* ``` -sl ``` : Sequence length. Number of iterations to write images. Default : 10.
+* ``` -ns ``` : Number of steps for the training. Default : 15000.
+* ``` -nh ``` : Number of hidden layer in the recurrent neural network. Default : 256.
+
+## Generate new images
+
+<img align="right" src="examples/mnist/mnist-generation.gif" width="250" height="250" />
+
+* ```python3 mnist_generate.py -f logs/test_mnist```
+
+The generated images will be saved in ```logs/test_mnist/generation```.
+This script samples some latent vectors and writes the corresponding images.
+
+You can change the following options for the generation :
+* ``` -m ``` : Maximum mean. The mean of each dimension of the latent vectors is sampled uniformly between [-m,+m]. Default : 0.
+* ``` -s ``` : Standard deviation for normal sampling the latent vectors. Default : 1.
+
+## Visualize the latent vectors
+
+<img align="right" src="examples/mnist/dataviz/dataviz-n10.png" width="280" height="220" />
+
+* ```python3 mnist_dataviz.py -f logs/test_mnist```
+
+The graph will be saved in ```logs/test_mnist/dataviz```.
+You can change the following options :
+* ``` -n ``` : Number of batches from the dataset to use. Default : 10.
+* ``` -p ``` : Perplexity for TSNE. Default : 30.
+
+
+
+
+# Drawing other datasets  
+
+You must put your new dataset in a "dataset" folder which should be in the same place than your "draw-color" folder : ```../dataset/my_dataset/```.
+Be careful, your images will be cropped and resized to 64x64 pixels. You can either change the img_size parameter or pre-resize the images yourself if you are not satisfied.
+
+The algo worked well with the CelebA dataset that you can find [here](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html).
+
+## Training
+
+<img align="right" src="examples/CelebA/CelebA-draw.gif" width="250" height="250" />
+
+* ```python3 color_train.py -d CelebA -n test_CelebA```
+
+The checkpoints and results will be saved in ```logs/test_CelebA```.
+The parameters of the training are saved in ```logs/test_CelebA/args.json```.
+
+The previous training options are still available, as well as :
+* ``` -d ``` : The name of your dataset folder. Default : CelebA.
+* ``` -v ``` : Visualize the attention box in the results. Default : False.
+* ``` -ne ``` : Number of epochs for the training. Default : 25.
+* ``` -is ``` : Size of your images. Default : 178.
+
+<img align="right" src="examples/CelebA/CelebA-generation.gif" width="250" height="250" />
+
+
+## Generate new images
+
+* ```python3 color_generate.py -f logs/test_CelebA```
+
+The generated images will be saved in ```logs/test_CelebA/generation```.
+
+This script samples some latent vectors and writes the corresponding images.
+
+The previous generation options are still available.
+
+
+## Visualize the latent vectors
+
+<img align="right" src="examples/CelebA/dataviz/dataviz-n10-p30.png" width="280" height="220" />
+
+* ```python3 color_dataviz.py -f logs/test_CelebA```
+
+The graph will be saved in ```logs/test_CelebA/dataviz```.
+
+The previous options are still available.

@@ -2,11 +2,12 @@ import scipy.misc
 import numpy as np
 import random
 import tensorflow as tf
-import cPickle
+import pickle
 
 
 def get_image(image_path, image_size, is_crop=True):
-    return transform(imread(image_path), image_size, is_crop)
+    img = imread(image_path)
+    return transform(img, image_size, is_crop)
 
 def transform(image, npx=64, is_crop=True):
     # npx : # of pixels width/height of image
@@ -26,7 +27,7 @@ def center_crop(x, crop_h, crop_w=None, resize_w=64):
                                [resize_w, resize_w])
 
 def imread(path):
-    readimage = scipy.misc.imread(path, mode="RGB").astype(np.float)
+    readimage = scipy.misc.imread(path).astype(np.float)
     return readimage
 
 def merge_color(images, size):
@@ -35,7 +36,7 @@ def merge_color(images, size):
 
     for idx, image in enumerate(images):
         i = idx % size[1]
-        j = idx / size[1]
+        j = int(idx / size[1])
         img[j*h:j*h+h, i*w:i*w+w, :] = image
 
     return img
@@ -47,8 +48,8 @@ def unpickle(file):
   return dict
 
 def ims(name, img):
-    # print img[:10][:10]
-    scipy.misc.toimage(img, cmin=0, cmax=1).save(name)
+    #scipy.misc.toimage(img, cmin=0, cmax=1).save(name)
+    scipy.misc.imsave(name, img)
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))

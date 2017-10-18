@@ -1,0 +1,1 @@
+{"nz_dim": 10, "n_hidden": 256, "attention": true, "name": "mnist", "sequence_length": 10, "nb_steps": 15000}
