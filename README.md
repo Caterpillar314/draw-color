@@ -1,9 +1,11 @@
 # DRAW
 
-![mnist draw gif](examples/mnist/mnist-draw.gif "MNIST")
-![CelebA draw clean gif](examples/CelebA/CelebA-draw-clean.gif "CelebA")
-
 A Tensorflow implementation of [DRAW](https://arxiv.org/abs/1502.04623). Now includes support for colored images !
+
+<img align="left" src="examples/mnist/mnist-draw.gif" width="420" height="420" />
+<img align="left" src="examples/CelebA/CelebA-draw-clean.gif" width="420" height="420" />
+
+
 
 This is a slightly rewritten version of [kvfrans's implementation](https://github.com/kvfrans/draw-color).
 
@@ -14,13 +16,11 @@ This version now includes functions to generate new images similar to the datase
 
 # Drawing MNIST
 
-![mnist draw gif](examples/mnist/mnist-draw.gif "MNIST")
-![mnist gen gif](examples/mnist/mnist-generation.gif "MNIST generation")
-![mnist dataviz](examples/mnist/dataviz/dataviz-n10.png "MNIST dataviz")
-
 ## Training
 
 * ```python3 mnist_train.py -n test_mnist```
+
+<img align="right" src="examples/mnist/mnist-draw.gif" width="250" height="250" />
 
 The checkpoints and results will be saved in ```logs/test_mnist```.
 The parameters of the training are saved in ```logs/test_mnist/args.json```.
@@ -34,6 +34,8 @@ You can use the following options for the training :
 
 ## Generate new images
 
+<img align="right" src="examples/mnist/mnist-generation.gif" width="250" height="250" />
+
 * ```python3 mnist_generate.py -f logs/test_mnist```
 
 The generated images will be saved in ```logs/test_mnist/generation```.
@@ -45,6 +47,8 @@ You can change the following options for the generation :
 
 ## Visualize the latent vectors
 
+<img align="right" src="examples/mnist/dataviz/dataviz-n10.png" width="280" height="220" />
+
 * ```python3 mnist_dataviz.py -f logs/test_mnist```
 
 The graph will be saved in ```logs/test_mnist/dataviz```.
@@ -52,11 +56,10 @@ You can change the following options :
 * ``` -n ``` : Number of batches from the dataset to use. Default : 10.
 * ``` -p ``` : Perplexity for TSNE. Default : 30.
 
-# Drawing other datasets
 
-![CelebA draw gif](examples/CelebA/CelebA-draw.gif "CelebA")
-![CelebA gen gif](examples/CelebA/CelebA-generation.gif "CelebA gen")
-![CelebA dataviz](examples/CelebA/dataviz/dataviz-n10-p30.png "CelebA dataviz")
+
+
+# Drawing other datasets  
 
 You must put your new dataset in a "dataset" folder which should be in the same place than your "draw-color" folder : ```../dataset/my_dataset/```.
 Be careful, your images will be cropped and resized to 64x64 pixels. You can either change the img_size parameter or pre-resize the images yourself if you are not satisfied.
@@ -64,6 +67,8 @@ Be careful, your images will be cropped and resized to 64x64 pixels. You can eit
 The algo worked well with the CelebA dataset that you can find [here](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html).
 
 ## Training
+
+<img align="right" src="examples/CelebA/CelebA-draw.gif" width="250" height="250" />
 
 * ```python3 color_train.py -d CelebA -n test_CelebA```
 
@@ -76,19 +81,26 @@ The previous training options are still available, as well as :
 * ``` -ne ``` : Number of epochs for the training. Default : 25.
 * ``` -is ``` : Size of your images. Default : 178.
 
+<img align="right" src="examples/CelebA/CelebA-generation.gif" width="250" height="250" />
+
 
 ## Generate new images
 
 * ```python3 color_generate.py -f logs/test_CelebA```
 
 The generated images will be saved in ```logs/test_CelebA/generation```.
+
 This script samples some latent vectors and writes the corresponding images.
+
 The previous generation options are still available.
 
 
 ## Visualize the latent vectors
 
+<img align="right" src="examples/CelebA/dataviz/dataviz-n10-p30.png" width="280" height="220" />
+
 * ```python3 color_dataviz.py -f logs/test_CelebA```
 
 The graph will be saved in ```logs/test_CelebA/dataviz```.
+
 The previous options are still available.
