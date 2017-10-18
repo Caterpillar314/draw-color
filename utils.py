@@ -5,14 +5,14 @@ import tensorflow as tf
 import pickle
 
 
-def get_image(image_path, image_size, is_crop=True):
+def get_image(image_path, image_old_size, img_new_size, is_crop=True):
     img = imread(image_path)
-    return transform(img, image_size, is_crop)
+    return transform(img, image_old_size, img_new_size, is_crop)
 
-def transform(image, npx=64, is_crop=True):
+def transform(image, image_old_size, img_new_size, is_crop=True):
     # npx : # of pixels width/height of image
     if is_crop:
-        cropped_image = center_crop(image, npx)
+        cropped_image = center_crop(image, image_old_size, resize_w=img_new_size)
     else:
         cropped_image = image
     return np.array(cropped_image)/127.5 - 1.
