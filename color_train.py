@@ -12,7 +12,7 @@ class Draw():
     def __init__(self, args):
 
         self.img_size = 64
-        self.img_initial_size = 64
+        self.img_initial_size = args.img_size
         self.num_colors = 3
 
         self.attention = args.attention
@@ -283,7 +283,7 @@ class Draw():
         if not os.path.exists(path):
             os.makedirs(path)
 
-        ims(path+"base.jpg",merge_color(base,[8,8]))
+        ims(path+"base-view.jpg",merge_color(base,[8,8]))
 
 
         print('restore')
@@ -340,11 +340,12 @@ def get_arg_parser():
     parser.add_argument('-d', '--dataset', default='CelebA', type=str, help="Which dataset to use", dest="dataset")
     parser.add_argument('-a', '--attention', default=True, type=bool_arg, help="Read and write with attention or not", dest="attention")
     parser.add_argument('-v', '--visualize', default=False, type=bool_arg, help="When using attention, whether to visualize or not the attention box", dest="visualize")
-    parser.add_argument('-ne', '--nb_epochs', default=10, type=int, help="Number of epochs to train the agent", dest="nb_epochs")
+    parser.add_argument('-ne', '--nb_epochs', default=25, type=int, help="Number of epochs to train the agent", dest="nb_epochs")
     parser.add_argument('-nd', '--nz_dim', default=10, type=int, help="Number of dimensions for the latent code", dest="nz_dim")
     parser.add_argument('-sl', '--sequence_length', default=10, type=int, help="Number of drawing steps", dest='sequence_length')
     parser.add_argument('-n', '--name', default='Exp', type=str, help="Which name to give to your experiment", dest="name")
     parser.add_argument('-nh', '--n_hidden', default=256, type=int, help="Number of hidden layer in the neural network", dest="n_hidden")
+    parser.add_argument('-is', '--img_size', default=178, type=int, help="Size of the dataset images", dest="img_size")
     return parser
 
 

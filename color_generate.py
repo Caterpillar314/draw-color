@@ -11,7 +11,6 @@ class Draw():
     def __init__(self, conf):
 
         self.img_size = 64
-        self.img_initial_size = 128
         self.num_colors = 3
 
         self.attention = conf['attention']
