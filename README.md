@@ -1,4 +1,8 @@
 # DRAW
+
+![mnist draw gif](example/mnist/mnist-draw.gif "MNIST")
+![CelebA draw clean gif](example/CelebA/CelebA-draw-clean.gif "CelebA")
+
 A Tensorflow implementation of [DRAW](https://arxiv.org/abs/1502.04623). Now includes support for colored images !
 
 This is a slightly rewritten version of [kvfrans's implementation](https://github.com/kvfrans/draw-color).
@@ -6,7 +10,14 @@ This is a slightly rewritten version of [kvfrans's implementation](https://githu
 This version now includes functions to generate new images similar to the dataset and visualize the latent vectors of the dataset with TSNE.
 
 
+
+
 # Drawing MNIST
+
+![mnist draw gif](example/mnist/mnist-draw.gif "MNIST")
+![mnist gen gif](example/mnist/mnist-generation.gif "MNIST generation")
+![mnist dataviz](example/mnist/dataviz/dataviz-n10.png "MNIST dataviz")
+
 ## Training
 
 * ```python3 mnist_train.py -n test_mnist```
@@ -42,6 +53,10 @@ You can change the following options :
 * ``` -p ``` : Perplexity for TSNE. Default : 30.
 
 # Drawing other datasets
+
+![CelebA draw gif](example/CelebA/CelebA-draw.gif "CelebA")
+![CelebA gen gif](example/CelebA/CelebA-generation.gif "CelebA gen")
+![CelebA dataviz](example/CelebA/dataviz/dataviz-n10-p30.png "CelebA dataviz")
 
 You must put your new dataset in a "dataset" folder which should be in the same place than your "draw-color" folder : ```../dataset/my_dataset/```.
 Be careful, your images will be cropped and resized to 64x64 pixels. You can either change the img_size parameter or pre-resize the images yourself if you are not satisfied.
