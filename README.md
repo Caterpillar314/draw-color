@@ -1,7 +1,7 @@
 # DRAW
 
-![mnist draw gif](example/mnist/mnist-draw.gif "MNIST")
-![CelebA draw clean gif](example/CelebA/CelebA-draw-clean.gif "CelebA")
+![mnist draw gif](examples/mnist/mnist-draw.gif "MNIST")
+![CelebA draw clean gif](examples/CelebA/CelebA-draw-clean.gif "CelebA")
 
 A Tensorflow implementation of [DRAW](https://arxiv.org/abs/1502.04623). Now includes support for colored images !
 
@@ -14,9 +14,9 @@ This version now includes functions to generate new images similar to the datase
 
 # Drawing MNIST
 
-![mnist draw gif](example/mnist/mnist-draw.gif "MNIST")
-![mnist gen gif](example/mnist/mnist-generation.gif "MNIST generation")
-![mnist dataviz](example/mnist/dataviz/dataviz-n10.png "MNIST dataviz")
+![mnist draw gif](examples/mnist/mnist-draw.gif "MNIST")
+![mnist gen gif](examples/mnist/mnist-generation.gif "MNIST generation")
+![mnist dataviz](examples/mnist/dataviz/dataviz-n10.png "MNIST dataviz")
 
 ## Training
 
@@ -54,9 +54,9 @@ You can change the following options :
 
 # Drawing other datasets
 
-![CelebA draw gif](example/CelebA/CelebA-draw.gif "CelebA")
-![CelebA gen gif](example/CelebA/CelebA-generation.gif "CelebA gen")
-![CelebA dataviz](example/CelebA/dataviz/dataviz-n10-p30.png "CelebA dataviz")
+![CelebA draw gif](examples/CelebA/CelebA-draw.gif "CelebA")
+![CelebA gen gif](examples/CelebA/CelebA-generation.gif "CelebA gen")
+![CelebA dataviz](examples/CelebA/dataviz/dataviz-n10-p30.png "CelebA dataviz")
 
 You must put your new dataset in a "dataset" folder which should be in the same place than your "draw-color" folder : ```../dataset/my_dataset/```.
 Be careful, your images will be cropped and resized to 64x64 pixels. You can either change the img_size parameter or pre-resize the images yourself if you are not satisfied.
