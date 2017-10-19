@@ -10,7 +10,7 @@ import json
 class Draw():
     def __init__(self, conf):
 
-        self.img_size = 64
+        self.img_size = conf['new_size']
         self.num_colors = 3
 
         self.attention = conf['attention']
