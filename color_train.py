@@ -345,8 +345,8 @@ def get_arg_parser():
     parser.add_argument('-sl', '--sequence_length', default=10, type=int, help="Number of drawing steps", dest='sequence_length')
     parser.add_argument('-n', '--name', default='Exp', type=str, help="Which name to give to your experiment", dest="name")
     parser.add_argument('-nh', '--n_hidden', default=256, type=int, help="Number of hidden layer in the neural network", dest="n_hidden")
-    parser.add_argument('-is', '--img_size', default=178, type=int, help="Size of the dataset images", dest="img_size")
-    parser.add_argument('-ns', '--new_size', default=128, type=int, help="Size of the dataset images, once resized", dest="new_size")
+    parser.add_argument('-is', '--img_size', default=64, type=int, help="Size of the dataset images", dest="img_size")
+    parser.add_argument('-ns', '--new_size', default=64, type=int, help="Size of the dataset images, once resized", dest="new_size")
     return parser
 
 
