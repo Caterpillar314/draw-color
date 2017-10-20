@@ -27,7 +27,7 @@ def center_crop(x, crop_h, crop_w=None, resize_w=64):
                                [resize_w, resize_w])
 
 def imread(path):
-    readimage = scipy.misc.imread(path).astype(np.float)
+    readimage = scipy.misc.imread(path, mode='RGB').astype(np.float)
     return readimage
 
 def merge_color(images, size):
