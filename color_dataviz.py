@@ -216,16 +216,25 @@ class Draw():
         wr = tf.reshape(wr, [self.batch_size, self.img_size * self.img_size * self.num_colors])
         return wr * tf.reshape(1.0/gamma, [-1, 1])
 
-    def generate(self, args, batch_size=64, nb_batch=100, save_imgs=False) :
+    def create_2D_JSON(self, X, folder, nb_batch, data):
+        print('Saving JSON file...')
+        nodes = []
+        for i in range(nb_batch):
+            for j in range(self.batch_size):
+                d = {"id":str(i*self.batch_size+j), "x": float(X[i*self.batch_size+j][0]), "y": float(X[i*self.batch_size+j][1]), "path": data[i*self.batch_size+j]}
+                nodes.append(d)
+        with open(folder+"/dataviz/data2D.json", 'w') as outfile:
+            json.dump({"nodes": nodes}, outfile)
+
+
+    def generate(self, args, nb_batch=100) :
 
         print('Creating Dataset...')
-
         data = glob("../dataset/"+self.dataset+"/*")
         shuffle(data)
-        processed_data = [get_image(f, self.img_initial_size, self.img_size, is_crop=True) for f in data[0:batch_size*nb_batch]]
+        processed_data = [get_image(f, self.img_initial_size, self.img_size, is_crop=True) for f in data[0:self.batch_size*nb_batch]]
 
         print('Restoring network...')
-
         path = args.folder+"/dataviz/"
         if not os.path.exists(path):
             os.makedirs(path)
@@ -233,36 +242,28 @@ class Draw():
         saver.restore(self.sess, tf.train.latest_checkpoint(os.getcwd()+"/"+args.folder+"/checkpoints/"))
 
         print('Processing data...')
+        X = np.zeros((self.batch_size * nb_batch, self.n_z), dtype=np.float32)
 
-        X = np.zeros((batch_size * nb_batch, self.n_z), dtype=np.float32)
-        with open(path+'results.csv', 'w', newline='') as csvfile :
-            writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            writer.writerow(['dim'+str(k) for k in range(self.n_z)])
+        for i in range(nb_batch):
+            print('Batch : '+str(i))
+            batch = processed_data[i*self.batch_size:(i+1)*self.batch_size]
+            batch_images = np.array(batch).astype(np.float32)
+            batch_images += 1
+            batch_images /= 2
 
-            for i in range(nb_batch):
-                print('Batch : '+str(i))
-                batch = processed_data[i*self.batch_size:(i+1)*self.batch_size]
-                batch_images = np.array(batch).astype(np.float32)
-                batch_images += 1
-                batch_images /= 2
+            mu = self.sess.run(self.mu, feed_dict={self.images: batch_images})
 
-                mu = self.sess.run(self.mu, feed_dict={self.images: batch_images})
+            for j in range(self.batch_size):
+                X[i*self.batch_size+j] = mu[-1][j].tolist()
 
-                for j in range(batch_size):
-                    writer.writerow(mu[-1][j].tolist())
-                    X[i*self.batch_size+j] = mu[-1][j].tolist()
-
-                if save_imgs :
-                    if not os.path.exists(path+str(i)):
-                        os.makedirs(path+str(i))
-                    for j in range(batch_size):
-                        ims(path+str(i)+'/img'+str(j)+'.jpg', processed_data[i*self.batch_size+j])
+        print('Reducing to 2 dimensions...')
         X_embedded = TSNE(perplexity=args.perplexity).fit_transform(X)
-        print(X_embedded.shape)
 
+        print('Plotting 2D graph...')
         plt.scatter(X_embedded[:,0], X_embedded[:,1])
         plt.savefig(args.folder+"/dataviz/dataviz-n"+str(nb_batch)+"-p"+str(args.perplexity)+".png")
 
+        self.create_2D_JSON(X_embedded, args.folder, nb_batch, data)
 
 def bool_arg(string):
     value = string.lower()
@@ -274,7 +275,6 @@ def bool_arg(string):
 def get_arg_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--folder', default='logs/CelebA/', type=str, help="Folder where is stored the training checkpoints", dest="folder")
-    parser.add_argument('-s', '--save_imgs', default=False, type=bool_arg, help="Whether to save the images or not", dest="save_imgs")
     parser.add_argument('-n', '--nb_batch', default=10, type=int, help="Number of batches to analyse", dest="nb_batch")
     parser.add_argument('-p', '--perplexity', default=30, type=int, help="Perplexity for TSNE", dest="perplexity")
     return parser
@@ -287,4 +287,4 @@ if __name__ == '__main__':
         conf = json.load(d)
 
     model = Draw(args, conf)
-    model.generate(args, nb_batch=args.nb_batch, save_imgs=args.save_imgs)
+    model.generate(args, nb_batch=args.nb_batch)
