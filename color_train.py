@@ -11,7 +11,7 @@ from random import shuffle
 class Draw():
     def __init__(self, args):
 
-        self.img_size = 64
+        self.img_size = args.new_size
         self.img_initial_size = args.img_size
         self.num_colors = 3
 
@@ -227,7 +227,7 @@ class Draw():
         print('Processing Dataset...')
         data = glob("../dataset/"+self.dataset+"/*")
         shuffle(data)
-        processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data]
+        processed_data = [get_image(f, self.img_initial_size, self.img_size, is_crop=True) for f in data]
 
         print('Started training...')
         base = np.array(processed_data[0:64])
@@ -272,7 +272,7 @@ class Draw():
 
         data = glob("../dataset/"+self.dataset+"/*")
         shuffle(data)
-        processed_data = [get_image(f, self.img_initial_size, is_crop=True) for f in data[0:64]]
+        processed_data = [get_image(f, self.img_initial_size, self.img_size, is_crop=True) for f in data[0:64]]
 
         print('Started testing...')
         base = np.array(processed_data)
@@ -345,7 +345,8 @@ def get_arg_parser():
     parser.add_argument('-sl', '--sequence_length', default=10, type=int, help="Number of drawing steps", dest='sequence_length')
     parser.add_argument('-n', '--name', default='Exp', type=str, help="Which name to give to your experiment", dest="name")
     parser.add_argument('-nh', '--n_hidden', default=256, type=int, help="Number of hidden layer in the neural network", dest="n_hidden")
-    parser.add_argument('-is', '--img_size', default=178, type=int, help="Size of the dataset images", dest="img_size")
+    parser.add_argument('-is', '--img_size', default=64, type=int, help="Size of the dataset images", dest="img_size")
+    parser.add_argument('-ns', '--new_size', default=64, type=int, help="Size of the dataset images, once resized", dest="new_size")
     return parser
 
 
